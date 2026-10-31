@@ -1,0 +1,35 @@
+# Line endings. This repository is edited on Windows (core.autocrlf=true),
+# and its files run in Linux containers: the Docker images are built from the
+# working tree (Dockerfile.worker copies src/ and skills-content/). So every
+# text file is LF in the repository and in every checkout, on every OS; these
+# rules take precedence over core.autocrlf. The firm's plugin copies of
+# skills-content/ are LF too, so a byte-for-byte re-sync stays byte-for-byte.
+* text=auto eol=lf
+
+# Named explicitly so they stay LF whatever happens to the rule above: Linux
+# reads these directly (Python, sh, the migration runner, Docker, flyctl).
+*.py text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
+*.toml text eol=lf
+Dockerfile* text eol=lf
+.dockerignore text eol=lf
+.gitattributes text eol=lf
+
+# Binary: never converted, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.doc binary
+*.xlsx binary
+*.pptx binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

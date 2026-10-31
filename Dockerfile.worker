@@ -1,0 +1,113 @@
+# Background job worker (pg-boss). Runs src/worker.ts directly via tsx - no
+# Next.js build here, but this image does need on PATH:
+# - Python3 + LibreOffice + poppler-utils for the skills' docx generation
+#   and page previews (src/services/docx-generator/generate.ts), plus
+#   fonts-liberation2: metric-compatible stand-ins for Times New Roman,
+#   Arial and Courier New, so a previewed page breaks where it will in Word
+#   (--no-install-recommends below would otherwise leave LibreOffice without
+#   them);
+# - ClamAV (clamscan + freshclam), poppler-utils (pdftotext, pdfinfo) and
+#   python-docx for the document-ingest job's malware scan and text
+#   extraction (src/services/ingest/ingest.ts), and for the form tools that
+#   download a blank form from uscis.gov and scan it before use;
+# - qpdf for the asylum fee proof packet's PDF assembly and page-number
+#   overlay (src/services/docx-generator/templates/asylum-fee-proof-packet/
+#   fee_packet.py); the Python packages it and the PDF form fillers need are
+#   in requirements.txt;
+# - util-linux (setpriv, unshare) for the sandbox those tools run in.
+# The web app's Dockerfile deliberately carries none of these.
+# The worker runs several jobs at once; the settings that bound them (and
+# the Node heap cap, NODE_OPTIONS) are in fly.worker.toml's [env], next to
+# the VM size they were chosen for.
+
+FROM node:22-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    libreoffice \
+    fonts-liberation2 \
+    poppler-utils \
+    qpdf \
+    clamav \
+    clamav-freshclam \
+    util-linux \
+  && rm -rf /var/lib/apt/lists/* \
+  && mkdir -p /run/clamav && chown clamav:clamav /run/clamav
+
+# Sandbox for every tool that reads untrusted bytes (clamscan, pdfinfo,
+# pdftotext, python-docx, LibreOffice, pdftoppm, the Python document
+# generators): src/services/sandbox/untrusted-exec.ts runs each call as one
+# of these unprivileged users (setpriv), leased for that call alone so two
+# jobs running at once (two firms' uploads or drafts) never share an
+# identity or each other's files, in new network and PID namespaces
+# (unshare --net --pid: no network, and nothing the tool starts outlives
+# it), under file-size and process limits (prlimit), with an environment
+# that holds no secrets. The pool has one user per job the worker can run
+# at once at the highest concurrency settings (16 skill runs and 8 upload
+# jobs: SKILL_RUN_CONCURRENCY and DOCUMENT_INGEST_CONCURRENCY in
+# src/services/queue/), each with a group of its own;
+# with fewer users a call waits for one instead. The worker
+# itself stays root so it can drop to these users and create the namespaces
+# (and so freshclam can update the signatures it owns). With
+# UNTRUSTED_TOOLS_SANDBOX=required the worker refuses to run those tools at
+# all when the sandbox is not available: uploads then stay "Not scanned" and
+# document previews fail, with the reason in the worker's startup log
+# ("untrusted-tool sandbox: ...") and in each document's note.
+# apt-get above installs the current Debian security release of each
+# package (LibreOffice included) at build time, so rebuild the image to pick
+# up new security fixes; the startup log prints the LibreOffice version.
+ENV UNTRUSTED_TOOLS_UID=10001 \
+    UNTRUSTED_TOOLS_UID_COUNT=24 \
+    UNTRUSTED_TOOLS_SANDBOX=required
+RUN for i in $(seq 0 $((UNTRUSTED_TOOLS_UID_COUNT - 1))); do \
+      id=$((UNTRUSTED_TOOLS_UID + i)); \
+      groupadd --system --gid "$id" "doctools$i" \
+      && useradd --system --uid "$id" --gid "$id" --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin "doctools$i" \
+      || exit 1; \
+    done
+
+# ClamAV signatures, the tradeoff:
+# - Fetched once here, at build time, so every container starts with a
+#   usable database even if the start-time refresh below fails. This adds
+#   roughly 250 MB to the image, and Docker's layer cache keeps whatever
+#   this step downloaded until the layer is rebuilt.
+# - Refreshed again at every container start (CMD below), which adds some
+#   seconds of boot time and a dependency on database.clamav.net. Its CDN
+#   rate-limits clients that check too often, so a crash-looping container
+#   can be put on a cool-down; it then keeps scanning with the signatures it
+#   already has, and logs the failed refresh.
+# - Kept fresh while running by freshclam in daemon mode (4 checks a day),
+#   since clamscan reads the database from disk on every scan.
+# If no database is present at all, clamscan exits with an error and the
+# ingest job marks the upload "error" (not scanned), never "clean".
+# Each scan loads the whole database (about 1 GB of RAM and tens of seconds),
+# so the worker runs one scan at a time (MALWARE_SCAN_CONCURRENCY,
+# src/services/queue/concurrency.ts) and fly.worker.toml counts it in the
+# VM's memory budget; a clamd daemon is the scale-up path if upload volume
+# makes that too slow.
+RUN freshclam --stdout || echo "freshclam failed at build time; the container retries at start"
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+# Full install (not --omit=dev): tsx, this worker's own entrypoint runner, is
+# a devDependency, matching the local `npm run worker` script exactly.
+RUN npm ci
+
+COPY requirements.txt ./
+RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
+
+COPY src ./src
+COPY skills-content ./skills-content
+COPY tsconfig.json ./
+
+# --conditions=react-server: run.ts, tools.ts and friends import
+# "server-only", which throws under plain Node unless this export condition
+# is set (Next.js sets it for server code automatically). Same as the
+# package.json "worker" script.
+# `exec node --import tsx` (tsx as a loader, not the tsx CLI under npx):
+# the shell is replaced by Node itself, so the stop signal Fly sends
+# (kill_signal in fly.worker.toml) reaches src/worker.ts's graceful-shutdown
+# handler directly instead of passing through npm and the tsx CLI process.
+CMD ["sh", "-c", "freshclam --stdout || echo '[entrypoint] freshclam refresh failed; scanning with the signatures already in the image'; freshclam --daemon --checks=4 || echo '[entrypoint] freshclam daemon did not start; signatures refresh only on restart'; exec node --conditions=react-server --import tsx src/worker.ts"]

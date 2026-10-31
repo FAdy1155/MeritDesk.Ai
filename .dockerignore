@@ -1,0 +1,25 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.DS_Store
+*.pem
+*.tsbuildinfo
+Dockerfile
+Dockerfile.worker
+fly.toml
+fly.worker.toml
+README.md
+
+# Signature images never go into an image: the same rules as .gitignore.
+# `fly deploy` builds from the working tree, not from git, so a file that
+# .gitignore keeps out of the repository would otherwise still be copied in
+# (COPY skills-content in Dockerfile.worker, COPY . . in Dockerfile).
+skills-content/**/signature.*
+**/signature.png
+**/signature.jpg
+**/signature.jpeg
+**/signatures

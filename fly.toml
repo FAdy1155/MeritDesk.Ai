@@ -1,0 +1,32 @@
+# Web app (Next.js). See fly.worker.toml for the background-job worker.
+#
+# No release_command here: this image is a Next.js standalone build without
+# tsx or the migration files. Migrations and the skill seed run as the
+# worker app's release_command (fly.worker.toml), so deploy the worker
+# first, then this app.
+#
+# `app` below is a placeholder — Fly app names are globally unique, so run
+# `fly apps create <your-unique-name>` first and replace this with whatever
+# name you got, before `fly deploy -c fly.toml ...`.
+app = "REPLACE-WITH-YOUR-WEB-APP-NAME"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
