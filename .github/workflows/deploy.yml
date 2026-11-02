@@ -1,6 +1,6 @@
-# Builds images on GitHub-hosted runners, pushes them to Fly's registry,
-# then deploys the prebuilt images. This avoids Fly remote-builder transport
-# failures while preserving the worker-first migration/release sequence.
+# Build images on GitHub-hosted runners and authenticate to each Fly app
+# with its own app-scoped deploy token. Deploy worker first so migrations run
+# before the web app is released.
 name: Deploy to Fly.io
 
 on:
@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       WORKER_APP: ${{ vars.FLY_WORKER_APP }}
       WEB_APP: ${{ vars.FLY_WEB_APP }}
       CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -30,9 +29,13 @@ jobs:
 
       - name: Check deployment settings
         shell: bash
+        env:
+          WORKER_TOKEN: ${{ secrets.FLY_WORKER_API_TOKEN }}
+          WEB_TOKEN: ${{ secrets.FLY_WEB_API_TOKEN }}
         run: |
           missing=""
-          [ -n "$FLY_API_TOKEN" ] || missing="$missing FLY_API_TOKEN(secret)"
+          [ -n "$WORKER_TOKEN" ] || missing="$missing FLY_WORKER_API_TOKEN(secret)"
+          [ -n "$WEB_TOKEN" ] || missing="$missing FLY_WEB_API_TOKEN(secret)"
           [ -n "$WORKER_APP" ] || missing="$missing FLY_WORKER_APP"
           [ -n "$WEB_APP" ] || missing="$missing FLY_WEB_APP"
           [ -n "$CLERK_PUBLISHABLE_KEY" ] || missing="$missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
@@ -41,10 +44,12 @@ jobs:
             exit 1
           fi
 
-      - name: Authenticate Docker to Fly registry
-        run: flyctl auth docker
-
       - uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate Docker for worker app
+        run: flyctl auth docker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_WORKER_API_TOKEN }}
 
       - name: Build and push worker image
         uses: docker/build-push-action@v6
@@ -61,6 +66,13 @@ jobs:
           --config fly.worker.toml
           --app "${{ vars.FLY_WORKER_APP }}"
           --image "registry.fly.io/${{ vars.FLY_WORKER_APP }}:${{ github.sha }}"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_WORKER_API_TOKEN }}
+
+      - name: Authenticate Docker for web app
+        run: flyctl auth docker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_WEB_API_TOKEN }}
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -79,3 +91,5 @@ jobs:
           --config fly.toml
           --app "${{ vars.FLY_WEB_APP }}"
           --image "registry.fly.io/${{ vars.FLY_WEB_APP }}:${{ github.sha }}"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_WEB_API_TOKEN }}
