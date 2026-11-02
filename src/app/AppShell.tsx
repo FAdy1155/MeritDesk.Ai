@@ -8,11 +8,14 @@ import { countUnreviewedLegalUpdates } from "@/services/monitoring/service";
 import { CreateFirmForm } from "./(app)/onboarding/CreateFirmForm";
 import { RepairTenantButton } from "./(app)/onboarding/RepairTenantButton";
 
-const NAV_GROUPS = [
+type NavLink = readonly [href: string, label: string, icon: string];
+type NavGroup = { label: string; links: readonly NavLink[] };
+
+const NAV_GROUPS: readonly NavGroup[] = [
   { label: "WORKSPACE", links: [["/", "Overview", "⌂"], ["/matters", "Matters", "▤"], ["/clients", "Clients", "♙"], ["/updates", "Legal updates", "◷"]] },
   { label: "RESOURCES", links: [["/library", "Legal library", "▧"], ["/practice-profile", "Practice profile", "◎"]] },
   { label: "ADMINISTRATION", links: [["/firm", "Firm settings", "⚙"], ["/connect", "AI connections", "⌘"], ["/billing", "Billing", "$"]] },
-] as const;
+];
 
 type ShellState =
   | { kind: "ready"; tenantId: string; firmName: string; canBill: boolean; entitlement: Entitlement; unreviewedLegalUpdates: number }
