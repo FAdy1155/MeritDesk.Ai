@@ -1,5 +1,4 @@
-# Deploy worker first so database migrations complete before the web app is released.
-# App-scoped deploy tokens are used directly for their respective deployments.
+# Validate the application before releasing worker migrations and the web app.
 name: Deploy to Fly.io
 
 on:
@@ -17,17 +16,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      WORKER_APP: ${{ vars.FLY_WORKER_APP }}
-      WEB_APP: ${{ vars.FLY_WEB_APP }}
-      CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      WORKER_APP: \${{ vars.FLY_WORKER_APP }}
+      WEB_APP: \${{ vars.FLY_WEB_APP }}
+      CLERK_PUBLISHABLE_KEY: \${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run TypeScript checks
+        run: npm run typecheck
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Check deployment settings
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           missing=""
@@ -39,22 +52,22 @@ jobs:
             echo "Missing GitHub repository settings:$missing"
             exit 1
           fi
-          echo "Fly token length: ${#FLY_API_TOKEN}"
+          echo "Fly token length: \${#FLY_API_TOKEN}"
           case "$FLY_API_TOKEN" in
             "FlyV1 "*) echo "Fly token prefix: FlyV1 (recognized)" ;;
-            *) echo "Fly token prefix: unexpected (first 4 characters: ${FLY_API_TOKEN:0:4})" ;;
+            *) echo "Fly token prefix: unexpected (first 4 characters: \${FLY_API_TOKEN:0:4})" ;;
           esac
           flyctl auth whoami --json
 
       - name: Deploy worker and run database migrations
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.worker.toml --app "$WORKER_APP"
 
       - name: Deploy web app
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.toml --app "$WEB_APP" \
             --build-arg "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY"
