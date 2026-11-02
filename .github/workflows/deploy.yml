@@ -27,11 +27,11 @@ jobs:
 
       - name: Check deployment settings
         env:
-          FLY_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           missing=""
-          [ -n "$FLY_TOKEN" ] || missing="$missing FLY_API_TOKEN(secret)"
+          [ -n "$FLY_API_TOKEN" ] || missing="$missing FLY_API_TOKEN(secret)"
           [ -n "$WORKER_APP" ] || missing="$missing FLY_WORKER_APP"
           [ -n "$WEB_APP" ] || missing="$missing FLY_WEB_APP"
           [ -n "$CLERK_PUBLISHABLE_KEY" ] || missing="$missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
@@ -39,10 +39,12 @@ jobs:
             echo "Missing GitHub repository settings:$missing"
             exit 1
           fi
-          case "$FLY_TOKEN" in
-            "FlyV1 "*) echo "Fly token format is present" ;;
-            *) echo "FLY_API_TOKEN must be the complete FlyV1 token from flyctl tokens create org"; exit 1 ;;
+          echo "Fly token length: ${#FLY_API_TOKEN}"
+          case "$FLY_API_TOKEN" in
+            "FlyV1 "*) echo "Fly token prefix: FlyV1 (recognized)" ;;
+            *) echo "Fly token prefix: unexpected (first 4 characters: ${FLY_API_TOKEN:0:4})" ;;
           esac
+          flyctl auth whoami --json
 
       - name: Deploy worker and run database migrations
         env:
