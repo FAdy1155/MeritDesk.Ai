@@ -3,14 +3,14 @@ import type { StatusBadge as Badge, StatusTone } from "@/services/library/status
 
 // Small presentational pieces shared by the /library pages (server components).
 
-export const muted = "text-black/60 dark:text-white/60";
-export const badgeBase = "rounded px-1.5 py-0.5 text-xs font-medium";
+export const muted = "text-[#77869a]";
+export const badgeBase = "inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold";
 
 const TONES: Record<StatusTone, string> = {
-  green: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
-  amber: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  red: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  gray: "bg-black/5 text-black/70 dark:bg-white/10 dark:text-white/70",
+  green: "bg-[#edf6f0] text-[#477455]",
+  amber: "bg-[#fbf3e7] text-[#946b2d]",
+  red: "bg-[#fbefef] text-[#a64e4e]",
+  gray: "bg-[#f1f4f7] text-[#68788d]",
 };
 
 export function ToneBadge({ label, tone, title }: { label: string; tone: StatusTone; title?: string | null }) {
@@ -34,7 +34,7 @@ export function formatUtc(date: Date | null | undefined): string {
 export function OfficialLink({ url, children }: { url: string; children?: ReactNode }) {
   if (!/^https:\/\//i.test(url)) return <span className="break-all">{children ?? url}</span>;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="break-all underline">
+    <a href={url} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-[#416da5] underline decoration-[#c4d2e4] underline-offset-2 hover:text-[#244d83]">
       {children ?? url}
     </a>
   );
