@@ -153,7 +153,7 @@ export function Landing() {
               AI-powered immigration legal work
             </div>
             <h1 className="text-[2.65rem] font-semibold leading-[1.08] tracking-[-0.055em] text-[#142641] sm:text-6xl lg:text-[4.15rem]">
-              {PRODUCT_NAME} makes Claude smarter for immigration legal work.
+              Immigration legal work, organized around your firm.
             </h1>
             <p className="mt-7 max-w-xl text-base leading-8 text-[#65748a] sm:text-lg">
               A connector that immigration attorneys and paralegals add to Claude, backed by a web app that holds your
