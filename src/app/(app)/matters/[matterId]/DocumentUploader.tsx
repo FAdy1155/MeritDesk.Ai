@@ -55,7 +55,7 @@ export function DocumentUploader({ matterId }: { matterId: string }) {
     <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Document type"
-        className="rounded-md border border-black/15 bg-transparent px-2 py-1 text-xs dark:border-white/20"
+        className="rounded-xl border border-[#dce4ee] bg-white px-3 py-2 text-sm text-[#344b66]"
         value={docType}
         onChange={(e) => setDocType(e.target.value as (typeof DOCUMENT_TYPES)[number][0])}
       >
@@ -65,12 +65,12 @@ export function DocumentUploader({ matterId }: { matterId: string }) {
           </option>
         ))}
       </select>
-      <input ref={fileInputRef} type="file" aria-label="File to upload" className="text-xs" />
+      <input ref={fileInputRef} type="file" aria-label="File to upload" className="max-w-full text-sm text-[#64758c] file:mr-3 file:rounded-lg file:border-0 file:bg-[#edf3fc] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-[#315d9c] hover:file:bg-[#e2ebf8]" />
       <button
         type="button"
         disabled={isPending}
         onClick={handleUpload}
-        className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white dark:bg-white dark:text-black disabled:opacity-50"
+        className="rounded-xl bg-[#17345f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#244a7c] disabled:opacity-50"
       >
         {isPending ? "Uploading..." : "Upload document"}
       </button>
