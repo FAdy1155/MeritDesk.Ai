@@ -12,9 +12,9 @@ import { updateConnectorSettingsAction } from "./connector-actions";
 import { sectionClass } from "./FirmIdentityForm";
 
 const buttonClass =
-  "rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black";
+  "rounded-xl bg-[#17345f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#244a7c] disabled:opacity-50";
 const secondaryButtonClass =
-  "rounded-md border border-black/15 px-4 py-2 text-sm font-medium disabled:opacity-50 dark:border-white/20";
+  "rounded-xl border border-[#dce4ee] bg-white px-4 py-2.5 text-sm font-semibold text-[#536b8a] hover:bg-[#f7f9fc] disabled:opacity-50";
 
 export function ConnectorSettings({
   initialSettings,
@@ -81,7 +81,7 @@ export function ConnectorSettings({
         <span className="text-sm font-medium">Server URL</span>
         {serverUrl ? (
           <div className="flex flex-wrap items-center gap-2">
-            <code className="rounded bg-black/5 px-2 py-1 text-sm break-all dark:bg-white/10">{serverUrl}</code>
+            <code className="rounded-xl border border-[#e4eaf1] bg-[#f7f9fc] px-3 py-2 text-sm text-[#344b66] break-all">{serverUrl}</code>
             <button type="button" onClick={copyUrl} className="text-xs underline">
               {copied ? "Copied" : "Copy"}
             </button>
@@ -95,14 +95,14 @@ export function ConnectorSettings({
       </div>
 
       {!clientAllowListConfigured && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+        <p className="rounded-xl border border-[#f0dfbd] bg-[#fff9ef] p-4 text-sm leading-6 text-[#8a642c]">
           The platform does not recognize any Claude or ChatGPT client yet, so the case-work tools are unavailable
           to every connection whatever the setting below; the library tools work. After a first test connection,
           the client it used is listed below for the platform&apos;s operator to recognize.
         </p>
       )}
 
-      <div className="rounded-md border border-black/10 p-3 text-sm dark:border-white/10">
+      <div className="rounded-xl border border-[#edf0f4] bg-[#fbfcfe] p-4 text-sm leading-6 text-[#64758c]">
         <p>
           <span className="font-medium">Case work: </span>
           {settings.caseWorkActive
@@ -159,7 +159,7 @@ export function ConnectorSettings({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+          <div className="flex flex-col gap-3 rounded-xl border border-[#f0dfbd] bg-[#fff9ef] p-4 text-sm text-[#8a642c]">
             <h3 className="font-semibold">{CONNECTOR_DISCLOSURE_TITLE}</h3>
             {CONNECTOR_DISCLOSURE_PARAGRAPHS.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
@@ -217,7 +217,7 @@ export function ConnectorSettings({
           </p>
           <ul className="flex flex-col gap-1">
             {unrecognizedClients.map((c) => (
-              <li key={c.clientId} className="rounded-md border border-black/10 p-2 dark:border-white/10">
+              <li key={c.clientId} className="rounded-xl border border-[#edf0f4] bg-[#fbfcfe] p-3">
                 <code className="break-all">{c.clientId}</code>
                 <span className="block text-xs text-black/60 dark:text-white/60">
                   First seen {new Date(c.firstSeenAt).toLocaleString()}, last seen{" "}
