@@ -55,13 +55,13 @@ export default async function PracticeProfilePage() {
       : null;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Practice Profile</h1>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
+      <header className="flex flex-col justify-between gap-4 border-b border-[#e6ebf1] pb-6 sm:flex-row sm:items-end">
+        <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">WORKFLOW CONFIGURATION</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Practice profile</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#7b899d]">Set the firm&apos;s working standards and context used by AI-assisted legal workflows. Review proposed changes before they become active.</p></div>
         {canEdit && (
           <Link
             href="/practice-profile/edit"
-            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+            className="inline-flex items-center justify-center rounded-xl bg-[#17345f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#244a7c]"
           >
             {openVersion ? `Continue editing version ${openVersion.versionNumber}` : active ? "Edit profile" : "Run setup interview"}
           </Link>
@@ -69,14 +69,14 @@ export default async function PracticeProfilePage() {
       </div>
 
       {!active && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+        <div className="rounded-2xl border border-[#f0dfbd] bg-[#fff9ef] p-5 text-sm leading-6 text-[#8a642c]">
           No active practice profile yet. Every skill reads this profile before it runs, so set it up
           before running claim-evaluation or packet-review.
         </div>
       )}
 
       {active && (
-        <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 dark:border-white/10">
+        <section className="flex flex-col gap-3 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6">
           <h2 className="font-medium">Active: version {active.versionNumber}</h2>
           <p className="text-sm text-black/60 dark:text-white/60">
             Confirmed {active.confirmedAt ? new Date(active.confirmedAt).toLocaleString() : "(date not recorded)"}
@@ -88,7 +88,7 @@ export default async function PracticeProfilePage() {
       )}
 
       {pending && (
-        <section className="flex flex-col gap-3 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+        <section className="flex flex-col gap-4 rounded-2xl border border-[#dce5f0] bg-[#f5f8fc] p-5 sm:p-6">
           <h2 className="font-medium">Pending confirmation: version {pending.versionNumber}</h2>
           {!pendingReview ? (
             <p className="text-sm">
@@ -144,7 +144,7 @@ export default async function PracticeProfilePage() {
 
       <section>
         <h2 className="mb-2 font-medium">Version history</h2>
-        <ul className="flex flex-col gap-1 text-sm text-black/70 dark:text-white/70">
+        <ul className="flex flex-col gap-2 text-sm text-[#64758c]">
           {versions.map((v) => (
             <li key={v.id}>
               v{v.versionNumber}: {v.status.replace(/_/g, " ")}
