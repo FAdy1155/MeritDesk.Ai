@@ -27,7 +27,7 @@ export default async function ConnectPage() {
 
       <section className="overflow-hidden rounded-2xl border border-[#dce5f0] bg-[linear-gradient(120deg,#f8fafd,#eef3fa)] p-5 sm:p-7" aria-labelledby="connector-address">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#7189aa]">STEP 01 · START HERE</p><h2 id="connector-address" className="mt-2 text-lg font-semibold text-[#263b57]">Your firm&apos;s connector address</h2></div><span className="rounded-full border border-[#dce8df] bg-white px-3 py-1 text-[10px] font-medium text-[#477455]">Secure sign-in</span></div>
-        <div className="mt-5">{serverUrl ? <CopyField value={serverUrl} label="Connector address" /> : <p className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">Not available yet: the server&apos;s public address (CONNECTOR_PUBLIC_ORIGIN) is not configured. Ask the platform's operator.</p>}</div>
+        <div className="mt-5">{serverUrl ? <CopyField value={serverUrl} label="Connector address" /> : <p className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">Not available yet: the server&apos;s public address (CONNECTOR_PUBLIC_ORIGIN) is not configured. Ask the platform&apos;s operator.</p>}</div>
         <p className="mt-3 text-xs leading-5 text-[#7d8ba0]">Copy this address into the custom connector setup in Claude or ChatGPT. Leave OAuth client ID and client secret fields empty; sign-in is handled by {PRODUCT_NAME}.</p>
       </section>
 
