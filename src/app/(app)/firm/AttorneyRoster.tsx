@@ -114,7 +114,7 @@ function AttorneyCard({
   ].filter(Boolean);
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-black/10 p-3 dark:border-white/10">
+    <div className="flex flex-col gap-3 rounded-xl border border-[#edf0f4] bg-[#fbfcfe] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{attorney.fullName}</span>
         {attorney.isDefaultSigner && (
@@ -283,7 +283,7 @@ function AttorneyForm({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-black/15 p-3 dark:border-white/20">
+    <div className="flex flex-col gap-3 rounded-xl border border-[#dce4ee] bg-[#fbfcfe] p-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
           <span className={labelClass}>Full name</span>
