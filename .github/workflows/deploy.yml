@@ -1,5 +1,5 @@
 # Deploy worker first so database migrations complete before the web app is released.
-# Authenticate each app-scoped token explicitly before attempting deployment.
+# App-scoped deploy tokens are used directly for their respective deployments.
 name: Deploy to Fly.io
 
 on:
@@ -42,21 +42,11 @@ jobs:
             exit 1
           fi
 
-      - name: Verify worker token authentication
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_WORKER_DEPLOY_TOKEN }}
-        run: flyctl auth whoami --json
-
       - name: Deploy worker and run database migrations
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_WORKER_DEPLOY_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.worker.toml --app "$WORKER_APP"
-
-      - name: Verify web token authentication
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_WEB_DEPLOY_TOKEN }}
-        run: flyctl auth whoami --json
 
       - name: Deploy web app
         env:
