@@ -1,5 +1,5 @@
-# Build images on GitHub-hosted runners and authenticate with the Fly organization token.
 # Deploy worker first so database migrations complete before the web app is released.
+# Fly performs remote builds, so the GitHub runner needs no Docker registry login.
 name: Deploy to Fly.io
 
 on:
@@ -21,7 +21,6 @@ jobs:
       WORKER_APP: ${{ vars.FLY_WORKER_APP }}
       WEB_APP: ${{ vars.FLY_WEB_APP }}
       CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,41 +41,11 @@ jobs:
             exit 1
           fi
 
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Authenticate Docker with Fly registry
-        run: flyctl auth docker
-
-      - name: Build and push worker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.worker
-          platforms: linux/amd64
-          push: true
-          tags: registry.fly.io/${{ vars.FLY_WORKER_APP }}:${{ github.sha }}
-
       - name: Deploy worker and run database migrations
-        run: >-
-          flyctl deploy
-          --config fly.worker.toml
-          --app "${{ vars.FLY_WORKER_APP }}"
-          --image "registry.fly.io/${{ vars.FLY_WORKER_APP }}:${{ github.sha }}"
-
-      - name: Build and push web image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          platforms: linux/amd64
-          push: true
-          build-args: |
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          tags: registry.fly.io/${{ vars.FLY_WEB_APP }}:${{ github.sha }}
+        run: |
+          flyctl deploy --remote-only --config fly.worker.toml --app "$WORKER_APP"
 
       - name: Deploy web app
-        run: >-
-          flyctl deploy
-          --config fly.toml
-          --app "${{ vars.FLY_WEB_APP }}"
-          --image "registry.fly.io/${{ vars.FLY_WEB_APP }}:${{ github.sha }}"
+        run: |
+          flyctl deploy --remote-only --config fly.toml --app "$WEB_APP" \
+            --build-arg "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY"
