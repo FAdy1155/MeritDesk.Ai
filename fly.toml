@@ -8,7 +8,7 @@
 # `app` below is a placeholder — Fly app names are globally unique, so run
 # `fly apps create <your-unique-name>` first and replace this with whatever
 # name you got, before `fly deploy -c fly.toml ...`.
-app = "REPLACE-WITH-YOUR-WEB-APP-NAME"
+app = "meritdesk-ai-web"
 primary_region = "iad"
 
 [build]
