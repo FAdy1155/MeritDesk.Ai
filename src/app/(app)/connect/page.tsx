@@ -55,7 +55,7 @@ export default async function ConnectPage() {
           </ul>
         </section>
       </div>
-      <aside className="rounded-2xl border border-[#e4eaf1] bg-white p-5 sm:p-6"><h2 className="text-sm font-semibold text-[#30445f]">Understand case-work access</h2><p className="mt-2 text-sm leading-6 text-[#7b899d]">When case-work tools are enabled, information returned from a matter becomes part of the conversation in your AI provider and is subject to that provider's terms. Your firm controls whether these tools are enabled. Review the disclosure on the <Link href="/firm" className="font-semibold text-[#416da5] hover:underline">Firm settings page</Link> before turning them on. Every case-work connector call is recorded in the firm&apos;s audit log.</p></aside>
+      <aside className="rounded-2xl border border-[#e4eaf1] bg-white p-5 sm:p-6"><h2 className="text-sm font-semibold text-[#30445f]">Understand case-work access</h2><p className="mt-2 text-sm leading-6 text-[#7b899d]">When case-work tools are enabled, information returned from a matter becomes part of the conversation in your AI provider and is subject to that provider&apos;s terms. Your firm controls whether these tools are enabled. Review the disclosure on the <Link href="/firm" className="font-semibold text-[#416da5] hover:underline">Firm settings page</Link> before turning them on. Every case-work connector call is recorded in the firm&apos;s audit log.</p></aside>
     </div>
   );
 }
