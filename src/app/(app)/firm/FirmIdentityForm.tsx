@@ -4,10 +4,10 @@ import { useState, useTransition } from "react";
 import { MAX_ADDRESS_LINES, type FirmIdentityInput, type FirmIdentityView } from "@/lib/firm-identity/schema";
 import { saveFirmIdentityAction } from "./actions";
 
-export const sectionClass = "flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10";
-export const labelClass = "text-sm font-medium";
+export const sectionClass = "flex flex-col gap-4 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6";
+export const labelClass = "text-xs font-semibold text-[#53657d]";
 export const inputClass =
-  "rounded-md border border-black/15 bg-transparent px-3 py-1.5 text-sm disabled:opacity-60 dark:border-white/20";
+  "mt-1.5 w-full rounded-xl border border-[#dce4ee] bg-white px-3.5 py-2.5 text-sm text-[#263b57] outline-none focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7] disabled:opacity-60";
 
 // The I-130 expedite letter generator keeps the firm's plain-ASCII gate, so
 // an accented name stops it; say so before anyone runs into it.
@@ -113,7 +113,7 @@ export function FirmIdentityForm({
             type="button"
             disabled={isPending}
             onClick={handleSave}
-            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="rounded-xl bg-[#17345f] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#244a7c] disabled:opacity-50"
           >
             {isPending ? "Saving..." : "Save letterhead"}
           </button>
