@@ -66,7 +66,7 @@ export default async function PracticeProfilePage() {
             {openVersion ? `Continue editing version ${openVersion.versionNumber}` : active ? "Edit profile" : "Run setup interview"}
           </Link>
         )}
-      </div>
+      </header>
 
       {!active && (
         <div className="rounded-2xl border border-[#f0dfbd] bg-[#fff9ef] p-5 text-sm leading-6 text-[#8a642c]">
