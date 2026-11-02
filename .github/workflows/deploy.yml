@@ -27,13 +27,11 @@ jobs:
 
       - name: Check deployment settings
         env:
-          WORKER_TOKEN: ${{ secrets.FLY_WORKER_DEPLOY_TOKEN }}
-          WEB_TOKEN: ${{ secrets.FLY_WEB_DEPLOY_TOKEN }}
+          FLY_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           missing=""
-          [ -n "$WORKER_TOKEN" ] || missing="$missing FLY_WORKER_DEPLOY_TOKEN(secret)"
-          [ -n "$WEB_TOKEN" ] || missing="$missing FLY_WEB_DEPLOY_TOKEN(secret)"
+          [ -n "$FLY_TOKEN" ] || missing="$missing FLY_API_TOKEN(secret)"
           [ -n "$WORKER_APP" ] || missing="$missing FLY_WORKER_APP"
           [ -n "$WEB_APP" ] || missing="$missing FLY_WEB_APP"
           [ -n "$CLERK_PUBLISHABLE_KEY" ] || missing="$missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
@@ -41,31 +39,20 @@ jobs:
             echo "Missing GitHub repository settings:$missing"
             exit 1
           fi
-
-      - name: Verify organization token reaches the GitHub runner
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          case "$FLY_API_TOKEN" in
-            "FlyV1 "*) echo "Token format: FlyV1 prefix present" ;;
-            *) echo "Token format: unexpected prefix"; exit 1 ;;
+          case "$FLY_TOKEN" in
+            "FlyV1 "*) echo "Fly token format is present" ;;
+            *) echo "FLY_API_TOKEN must be the complete FlyV1 token from flyctl tokens create org"; exit 1 ;;
           esac
-          echo "Token length before normalization: ${#FLY_API_TOKEN}"
-          FLY_API_TOKEN="$(printf '%s' "$FLY_API_TOKEN" | tr -d '\\r\\n')"
-          export FLY_API_TOKEN
-          echo "Token length after normalization: ${#FLY_API_TOKEN}"
-          flyctl auth whoami --json
 
       - name: Deploy worker and run database migrations
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_WORKER_DEPLOY_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.worker.toml --app "$WORKER_APP"
 
       - name: Deploy web app
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_WEB_DEPLOY_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.toml --app "$WEB_APP" \
             --build-arg "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY"
