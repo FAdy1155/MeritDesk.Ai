@@ -81,7 +81,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
           month. The subscription renews automatically, and a receipt comes by email after every payment. Payment is
           handled by Stripe on this site, never inside Claude.
         </p>
-      </div>
+      </header>
 
       {checkout === "success" && (
         <div className="rounded-2xl border border-[#d8eadf] bg-[#f1f8f3] p-4 text-sm leading-6 text-[#477455]">
