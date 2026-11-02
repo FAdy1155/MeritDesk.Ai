@@ -7,15 +7,7 @@ import { BILLING_ROLES, NoActiveTenantError, TenantResolutionError, getCurrentTe
 import { countUnreviewedLegalUpdates } from "@/services/monitoring/service";
 import { CreateFirmForm } from "./(app)/onboarding/CreateFirmForm";
 import { RepairTenantButton } from "./(app)/onboarding/RepairTenantButton";
-
-type NavLink = readonly [href: string, label: string, icon: string];
-type NavGroup = { label: string; links: readonly NavLink[] };
-
-const NAV_GROUPS: readonly NavGroup[] = [
-  { label: "WORKSPACE", links: [["/", "Overview", "⌂"], ["/matters", "Matters", "▤"], ["/clients", "Clients", "♙"], ["/updates", "Legal updates", "◷"]] },
-  { label: "RESOURCES", links: [["/library", "Legal library", "▧"], ["/practice-profile", "Practice profile", "◎"]] },
-  { label: "ADMINISTRATION", links: [["/firm", "Firm settings", "⚙"], ["/connect", "AI connections", "⌘"], ["/billing", "Billing", "$"]] },
-];
+import { AppNavigation } from "./AppNavigation";
 
 type ShellState =
   | { kind: "ready"; tenantId: string; firmName: string; canBill: boolean; entitlement: Entitlement; unreviewedLegalUpdates: number }
@@ -46,39 +38,13 @@ export async function AppShell({ children, enforceLock }: { children: React.Reac
     <div className="min-h-screen flex-1 bg-[#f5f7fb] text-[#24344d]">
       {ready ? (
         <div className="flex min-h-screen">
-          <aside className="hidden w-[248px] shrink-0 flex-col border-r border-[#e8edf4] bg-white px-4 py-6 md:flex">
-            <Link href="/" className="mb-9 flex items-center gap-3 px-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#18345b] text-lg font-bold text-white shadow-sm">M</span>
-              <span className="leading-tight"><span className="block text-[15px] font-bold tracking-tight text-[#172b49]">MeritDesk<span className="text-[#4775bd]">.AI</span></span><span className="mt-1 block text-[10px] font-medium uppercase tracking-[.16em] text-[#9aa7b9]">Legal workspace</span></span>
-            </Link>
-            <div className="flex flex-1 flex-col gap-7">
-              {NAV_GROUPS.map((group) => (
-                <section key={group.label}>
-                  <h2 className="mb-2 px-3 text-[10px] font-bold tracking-[.16em] text-[#9aa7b9]">{group.label}</h2>
-                  <div className="space-y-1">{group.links.map(([href, label, icon]) => (
-                    <Link key={href} href={href} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[#64748b] transition hover:bg-[#f2f6fc] hover:text-[#244d83]">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#f5f7fb] text-[16px] text-[#8294ad] group-hover:bg-white group-hover:text-[#315f9d]">{icon}</span>
-                      <span className="flex-1">{label}</span>
-                      {href === "/updates" && state.unreviewedLegalUpdates > 0 && <span className="rounded-full bg-[#e9a23b] px-2 py-0.5 text-[10px] font-bold text-white">{state.unreviewedLegalUpdates}</span>}
-                    </Link>
-                  ))}</div>
-                </section>
-              ))}
-            </div>
-            <div className="mt-8 rounded-2xl border border-[#e7edf5] bg-[#f8fafd] p-4">
-              <p className="text-xs font-semibold text-[#344b6d]">Your practice, organized.</p>
-              <p className="mt-1.5 text-[11px] leading-5 text-[#8290a4]">Manage matters, documents and legal research in one secure workspace.</p>
-              <Link href="/connect" className="mt-3 inline-flex text-xs font-semibold text-[#3769a8]">Set up AI connection →</Link>
-            </div>
-          </aside>
+          <AppNavigation variant="sidebar" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />  </aside>
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-30 flex min-h-[68px] items-center justify-between gap-4 border-b border-[#e8edf4] bg-white/95 px-4 backdrop-blur-xl sm:px-7">
               <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#9aa7b9]">Firm workspace</p><p className="truncate text-sm font-semibold text-[#243a5b]">{state.firmName}</p></div>
               <div className="flex shrink-0 items-center gap-3"><OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/connect" afterSelectOrganizationUrl="/" /><span className="h-7 w-px bg-[#e8edf4]" /><UserButton /></div>
             </header>
-            <nav aria-label="Mobile workspace navigation" className="flex gap-1 overflow-x-auto border-b border-[#e8edf4] bg-white px-3 py-2 md:hidden">
-              {NAV_GROUPS.flatMap((group) => group.links).map(([href, label]) => <Link key={href} href={href} className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[#64748b] hover:bg-[#edf3fc] hover:text-[#244d83]">{label}</Link>)}
-            </nav>
+            <AppNavigation variant="mobile" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />      </nav>
             <EntitlementBanner entitlement={state.entitlement} canBill={state.canBill} />
             <main className="w-full flex-1 px-4 py-7 sm:px-7 sm:py-9 lg:px-10">
               <div className="mx-auto w-full max-w-[1440px]">
