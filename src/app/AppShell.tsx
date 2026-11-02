@@ -8,35 +8,10 @@ import { countUnreviewedLegalUpdates } from "@/services/monitoring/service";
 import { CreateFirmForm } from "./(app)/onboarding/CreateFirmForm";
 import { RepairTenantButton } from "./(app)/onboarding/RepairTenantButton";
 
-// The signed-in app's frame: the header with the firm's name and the
-// navigation, the user's organization switcher and account menu, and the
-// three states a signed-in user can be in before the pages render:
-//
-// - no firm chosen (a new user, or a member of none): the create-firm
-//   form (src/lib/tenants/create-firm.ts), which starts the free month
-//   when the person has not had one;
-// - a firm that is not set up in the database yet (the org-sync webhook
-//   has not arrived): a button that writes the rows now;
-// - a firm whose free month or subscription has ended, or that never had
-//   a free month: the lock screen, with Subscribe for the owner/admin.
-//   Pages under src/app/(app) pass enforceLock; the Billing page
-//   (src/app/billing) does not, so a locked firm can still subscribe there.
-//   While locked, nothing else works: every Server Action under
-//   src/app/(app) starts with getCurrentEntitledTenant (src/lib/tenant.ts).
-//
-// The free month's last week and a failed payment's grace period show a
-// banner above every page (src/lib/billing/entitlement.ts).
-
-const NAV_LINKS = [
-  ["/", "Dashboard"],
-  ["/matters", "Matters"],
-  ["/clients", "Clients"],
-  ["/practice-profile", "Practice Profile"],
-  ["/firm", "Firm"],
-  ["/updates", "Legal updates"],
-  ["/library", "Library"],
-  ["/connect", "Connect"],
-  ["/billing", "Billing"],
+const NAV_GROUPS = [
+  { label: "WORKSPACE", links: [["/", "Overview", "⌂"], ["/matters", "Matters", "▤"], ["/clients", "Clients", "♙"], ["/updates", "Legal updates", "◷"]] },
+  { label: "RESOURCES", links: [["/library", "Legal library", "▧"], ["/practice-profile", "Practice profile", "◎"]] },
+  { label: "ADMINISTRATION", links: [["/firm", "Firm settings", "⚙"], ["/connect", "AI connections", "⌘"], ["/billing", "Billing", "$"]] },
 ] as const;
 
 type ShellState =
@@ -50,16 +25,13 @@ async function resolveShellState(): Promise<ShellState> {
     const { tenant, membership } = await getCurrentTenant();
     const [entitlement, unreviewedLegalUpdates] = await Promise.all([
       getEntitlement(tenant.id),
-      // .catch: the nav badge is optional, and the layout keeps working on a
-      // database where migration 0005 (legal_updates) has not run yet.
       countUnreviewedLegalUpdates(tenant.id).catch(() => 0),
     ]);
     return { kind: "ready", tenantId: tenant.id, firmName: tenant.name, canBill: hasRole(membership, BILLING_ROLES), entitlement, unreviewedLegalUpdates };
   } catch (err) {
     if (err instanceof NoActiveTenantError) return { kind: "no_org" };
     if (err instanceof TenantResolutionError) return { kind: "no_tenant", reason: err.reason };
-    // The details (which can quote query values or ids) go to the log; the page shows a generic sentence.
-    console.error(`[app] the firm could not be resolved for this request: ${describeErrorForLog(err)}`);
+    console.error("[app] the firm could not be resolved for this request: " + describeErrorForLog(err));
     return { kind: "error" };
   }
 }
@@ -67,142 +39,89 @@ async function resolveShellState(): Promise<ShellState> {
 export async function AppShell({ children, enforceLock }: { children: React.ReactNode; enforceLock: boolean }) {
   const state = await resolveShellState();
   const ready = state.kind === "ready";
-
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-black/10 px-6 py-3 dark:border-white/10">
-        <div className="flex items-center gap-6">
-          <span className="font-semibold">
-            {PRODUCT_NAME}
-            {ready && <span className="ml-2 font-normal text-black/60 dark:text-white/60">{state.firmName}</span>}
-          </span>
-          {ready && (
-            <nav className="flex flex-wrap items-center gap-4 text-sm text-black/70 dark:text-white/70">
-              {NAV_LINKS.map(([href, label]) => (
-                <Link key={href} href={href} className="hover:text-black dark:hover:text-white">
-                  {label}
-                  {href === "/updates" && state.unreviewedLegalUpdates > 0 && (
-                    <span
-                      className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-xs font-medium text-white"
-                      aria-label={`${state.unreviewedLegalUpdates} unreviewed legal updates`}
-                    >
-                      {state.unreviewedLegalUpdates}
-                    </span>
-                  )}
-                </Link>
+    <div className="min-h-screen flex-1 bg-[#f5f7fb] text-[#24344d]">
+      {ready ? (
+        <div className="flex min-h-screen">
+          <aside className="hidden w-[248px] shrink-0 flex-col border-r border-[#e8edf4] bg-white px-4 py-6 md:flex">
+            <Link href="/" className="mb-9 flex items-center gap-3 px-2">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#18345b] text-lg font-bold text-white shadow-sm">M</span>
+              <span className="leading-tight"><span className="block text-[15px] font-bold tracking-tight text-[#172b49]">MeritDesk<span className="text-[#4775bd]">.AI</span></span><span className="mt-1 block text-[10px] font-medium uppercase tracking-[.16em] text-[#9aa7b9]">Legal workspace</span></span>
+            </Link>
+            <div className="flex flex-1 flex-col gap-7">
+              {NAV_GROUPS.map((group) => (
+                <section key={group.label}>
+                  <h2 className="mb-2 px-3 text-[10px] font-bold tracking-[.16em] text-[#9aa7b9]">{group.label}</h2>
+                  <div className="space-y-1">{group.links.map(([href, label, icon]) => (
+                    <Link key={href} href={href} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[#64748b] transition hover:bg-[#f2f6fc] hover:text-[#244d83]">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#f5f7fb] text-[16px] text-[#8294ad] group-hover:bg-white group-hover:text-[#315f9d]">{icon}</span>
+                      <span className="flex-1">{label}</span>
+                      {href === "/updates" && state.unreviewedLegalUpdates > 0 && <span className="rounded-full bg-[#e9a23b] px-2 py-0.5 text-[10px] font-bold text-white">{state.unreviewedLegalUpdates}</span>}
+                    </Link>
+                  ))}</div>
+                </section>
               ))}
+            </div>
+            <div className="mt-8 rounded-2xl border border-[#e7edf5] bg-[#f8fafd] p-4">
+              <p className="text-xs font-semibold text-[#344b6d]">Your practice, organized.</p>
+              <p className="mt-1.5 text-[11px] leading-5 text-[#8290a4]">Manage matters, documents and legal research in one secure workspace.</p>
+              <Link href="/connect" className="mt-3 inline-flex text-xs font-semibold text-[#3769a8]">Set up AI connection →</Link>
+            </div>
+          </aside>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="sticky top-0 z-30 flex min-h-[68px] items-center justify-between gap-4 border-b border-[#e8edf4] bg-white/95 px-4 backdrop-blur-xl sm:px-7">
+              <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#9aa7b9]">Firm workspace</p><p className="truncate text-sm font-semibold text-[#243a5b]">{state.firmName}</p></div>
+              <div className="flex shrink-0 items-center gap-3"><OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/connect" afterSelectOrganizationUrl="/" /><span className="h-7 w-px bg-[#e8edf4]" /><UserButton /></div>
+            </header>
+            <nav aria-label="Mobile workspace navigation" className="flex gap-1 overflow-x-auto border-b border-[#e8edf4] bg-white px-3 py-2 md:hidden">
+              {NAV_GROUPS.flatMap((group) => group.links).map(([href, label]) => <Link key={href} href={href} className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[#64748b] hover:bg-[#edf3fc] hover:text-[#244d83]">{label}</Link>)}
             </nav>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/connect" afterSelectOrganizationUrl="/" />
-          <UserButton />
-        </div>
-      </header>
-      {ready && <EntitlementBanner entitlement={state.entitlement} canBill={state.canBill} />}
-      <main className="flex flex-1 flex-col p-6">
-        {state.kind === "no_org" && <CreateFirmPanel />}
-        {state.kind === "no_tenant" && <RepairTenantPanel reason={state.reason} />}
-        {state.kind === "error" && (
-          <div className="mx-auto max-w-md rounded-lg border border-red-300 bg-red-50 p-6 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-            The app could not load your firm just now. Reload the page; if it keeps failing, ask the platform&apos;s
-            operator (the details are in the server log).
+            <EntitlementBanner entitlement={state.entitlement} canBill={state.canBill} />
+            <main className="w-full flex-1 px-4 py-7 sm:px-7 sm:py-9 lg:px-10">
+              <div className="mx-auto w-full max-w-[1440px]">
+                {enforceLock && state.entitlement.state === "locked" ? <LockScreen firmName={state.firmName} entitlement={state.entitlement} canBill={state.canBill} /> : children}
+              </div>
+            </main>
+            <footer className="border-t border-[#e8edf4] bg-white px-7 py-4 text-[11px] text-[#9aa7b9]">© {new Date().getFullYear()} {PRODUCT_NAME} <span className="mx-2">·</span> Built for immigration law practices</footer>
           </div>
-        )}
-        {ready &&
-          (enforceLock && state.entitlement.state === "locked" ? (
-            <LockScreen firmName={state.firmName} entitlement={state.entitlement} canBill={state.canBill} />
-          ) : (
-            children
-          ))}
-      </main>
+        </div>
+      ) : (
+        <main className="flex min-h-screen items-center justify-center px-5 py-12">
+          {state.kind === "no_org" && <CreateFirmPanel />}
+          {state.kind === "no_tenant" && <RepairTenantPanel reason={state.reason} />}
+          {state.kind === "error" && <div className="max-w-md rounded-2xl border border-red-200 bg-white p-7 text-sm text-red-800 shadow-sm">The app could not load your firm just now. Reload the page; if it keeps failing, ask the platform&apos;s operator (the details are in the server log).</div>}
+        </main>
+      )}
     </div>
   );
 }
 
 function CreateFirmPanel() {
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-xl font-semibold">Create your firm</h1>
-      <p className="text-sm text-black/70 dark:text-white/70">
-        A firm is the account your colleagues join and the connector in Claude acts for. You become its owner. The
-        first 30 days are free (once per person); after that it is $20 per user per month, and you subscribe on this
-        site whenever you are ready.
-      </p>
-      <CreateFirmForm />
-      <p className="text-xs text-black/60 dark:text-white/60">
-        Invited to a firm that already exists? Accept the invitation from the email your firm sent, then choose the
-        firm in the menu above.
-      </p>
-    </div>
-  );
+  return <div className="w-full max-w-lg rounded-3xl border border-[#e5ebf3] bg-white p-8 shadow-[0_20px_60px_-35px_rgba(25,49,82,.25)] sm:p-10">
+    <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#18345b] text-xl font-bold text-white">M</div>
+    <p className="text-xs font-bold uppercase tracking-[.16em] text-[#6685b3]">Welcome to MeritDesk.AI</p>
+    <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#1d304d]">Set up your firm workspace</h1>
+    <p className="mt-3 text-sm leading-7 text-[#738198]">Create the shared workspace for your attorneys and staff. Organize immigration matters, manage documents, and connect your AI tools.</p>
+    <div className="my-6 rounded-xl bg-[#f5f8fc] p-4 text-sm leading-6 text-[#65758d]">Your first 30 days are free. After that, it is $20 per user per month. You can invite your team and configure the workspace after setup.</div>
+    <CreateFirmForm />
+    <p className="mt-5 text-xs leading-5 text-[#98a3b3]">Already invited to a firm? Accept the invitation from your email, then select that firm from the organization menu.</p>
+  </div>;
 }
-
 function RepairTenantPanel({ reason }: { reason: "no_tenant" | "no_membership" }) {
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-xl font-semibold">One more step</h1>
-      <p className="text-sm text-black/70 dark:text-white/70">
-        {reason === "no_tenant"
-          ? "This firm exists at the sign-in service but is not set up in the app yet (its sync has not arrived). Set it up now."
-          : "The sign-in service does not list you as a member of this firm any more. If you were just added again, set it up now; otherwise reload the page and choose another firm."}
-      </p>
-      <RepairTenantButton />
-    </div>
-  );
+  return <div className="w-full max-w-lg rounded-3xl border border-[#e5ebf3] bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#6685b3]">Workspace setup</p><h1 className="mt-3 text-2xl font-semibold text-[#1d304d]">One more step</h1><p className="mt-3 text-sm leading-7 text-[#738198]">{reason === "no_tenant" ? "This firm exists at the sign-in service but has not been set up in the workspace yet. Complete the setup now." : "Your account is no longer listed as a member of this firm. If you were just added again, complete setup; otherwise choose another firm."}</p><div className="mt-6"><RepairTenantButton /></div></div>;
 }
-
 function EntitlementBanner({ entitlement, canBill }: { entitlement: Entitlement; canBill: boolean }) {
   let text: string | null = null;
   if (entitlement.state === "trialing" && entitlement.trialDaysLeft <= 7 && entitlement.trialEndsAt) {
     const days = entitlement.trialDaysLeft;
-    text = `Your free month ends on ${formatDay(entitlement.trialEndsAt)} (${days === 1 ? "1 day" : `${days} days`} left). ${
-      canBill ? "Subscribe on the Billing page to keep access." : "Ask your firm's owner to subscribe on the Billing page."
-    }`;
+    text = "Your free month ends on " + formatDay(entitlement.trialEndsAt) + " (" + (days === 1 ? "1 day" : days + " days") + " left). " + (canBill ? "Subscribe on the Billing page to keep access." : "Ask your firm's owner to subscribe on the Billing page.");
   } else if (entitlement.state === "past_due" && entitlement.graceEndsAt) {
-    text = `A payment failed. Full access continues until ${formatDay(entitlement.graceEndsAt)}; ${
-      canBill ? "update the card under Manage billing on the Billing page." : "ask your firm's owner to update the card on the Billing page."
-    }`;
+    text = "A payment failed. Full access continues until " + formatDay(entitlement.graceEndsAt) + "; " + (canBill ? "update the card under Manage billing on the Billing page." : "ask your firm's owner to update the card on the Billing page.");
   }
   if (!text) return null;
-  return (
-    <div className="border-b border-amber-300 bg-amber-50 px-6 py-2 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-      {text}{" "}
-      <Link href="/billing" className="underline">
-        Billing
-      </Link>
-    </div>
-  );
+  return <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">{text} <Link href="/billing" className="ml-1 font-semibold underline underline-offset-2">Review billing</Link></div>;
 }
-
 function LockScreen({ firmName, entitlement, canBill }: { firmName: string; entitlement: Entitlement; canBill: boolean }) {
-  const title =
-    entitlement.reason === "trial_ended"
-      ? "Your free month has ended"
-      : entitlement.reason === "no_trial"
-        ? "Subscribe to start"
-        : "The subscription has ended";
-  return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-4 rounded-lg border border-black/10 p-6 dark:border-white/10">
-      <h1 className="text-xl font-semibold">{title}</h1>
-      <p className="text-sm text-black/70 dark:text-white/70">
-        {PRODUCT_NAME} is locked for {firmName}: {lockedReasonText(entitlement)}. The connector in Claude is locked too.
-        Nothing is deleted: matters, documents and settings are kept, and subscribing unlocks everything at once.
-      </p>
-      <p className="text-sm text-black/70 dark:text-white/70">
-        $20 per user per month, renewed automatically, receipts by email
-        {entitlement.reason === "no_trial" ? "; the card is charged when you subscribe" : ""}.
-      </p>
-      {canBill ? (
-        <Link
-          href="/billing"
-          className="w-fit rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          Subscribe
-        </Link>
-      ) : (
-        <p className="text-sm font-medium">Ask your firm&apos;s owner to subscribe on the Billing page.</p>
-      )}
-    </div>
-  );
+  const title = entitlement.reason === "trial_ended" ? "Your free month has ended" : entitlement.reason === "no_trial" ? "Choose a plan to get started" : "Your subscription has ended";
+  return <div className="mx-auto max-w-2xl rounded-3xl border border-[#e4eaf2] bg-white p-8 shadow-sm sm:p-10"><div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fff4e5] text-xl text-[#bd7b22]">!</div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#9a7b50]">Subscription required</p><h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#1d304d]">{title}</h1><p className="mt-3 text-sm leading-7 text-[#738198]">{PRODUCT_NAME} is currently locked for {firmName}: {lockedReasonText(entitlement)}. Your matters, documents and settings are retained. Subscribe to restore access to the workspace and connector.</p><p className="mt-4 text-sm text-[#64748b]">$20 per user per month, renewed automatically, with receipts by email{entitlement.reason === "no_trial" ? ". Your card is charged when you subscribe." : "."}</p>{canBill ? <Link href="/billing" className="mt-7 inline-flex rounded-xl bg-[#18345b] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#244a7c]">View billing and subscribe →</Link> : <p className="mt-6 text-sm font-medium text-[#43536b]">Ask your firm&apos;s owner to subscribe on the Billing page.</p>}</div>;
 }
