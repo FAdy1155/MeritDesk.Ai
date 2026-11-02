@@ -26,7 +26,7 @@ export default async function EditPracticeProfilePage() {
   const baseline = active ? readPracticeProfile(active.profileJson) : null;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto w-full max-w-5xl">
       <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">WORKFLOW CONFIGURATION</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Edit practice profile</h1>
       <p className="mb-7 mt-3 max-w-3xl text-sm leading-7 text-[#7b899d]">
         Version {draft.versionNumber}. Leave a field empty until the firm has a real answer: an empty field reaches
