@@ -4,65 +4,20 @@ import { createClientAction } from "./actions";
 
 async function createClientFromForm(formData: FormData) {
   "use server";
-  await createClientAction({
-    fullName: String(formData.get("fullName") ?? ""),
-    aNumber: String(formData.get("aNumber") ?? "") || undefined,
-    dateOfBirth: String(formData.get("dateOfBirth") ?? "") || undefined,
-    countryOfBirth: String(formData.get("countryOfBirth") ?? "") || undefined,
-    primaryLanguage: String(formData.get("primaryLanguage") ?? "") || undefined,
-    contactEmail: String(formData.get("contactEmail") ?? "") || undefined,
-    contactPhone: String(formData.get("contactPhone") ?? "") || undefined,
-  });
+  await createClientAction({ fullName: String(formData.get("fullName") ?? ""), aNumber: String(formData.get("aNumber") ?? "") || undefined, dateOfBirth: String(formData.get("dateOfBirth") ?? "") || undefined, countryOfBirth: String(formData.get("countryOfBirth") ?? "") || undefined, primaryLanguage: String(formData.get("primaryLanguage") ?? "") || undefined, contactEmail: String(formData.get("contactEmail") ?? "") || undefined, contactPhone: String(formData.get("contactPhone") ?? "") || undefined });
 }
-
-const inputClass =
-  "rounded-md border border-black/15 bg-transparent px-3 py-1.5 text-sm dark:border-white/20";
+const inputClass = "mt-1.5 w-full rounded-xl border border-[#dce4ee] bg-white px-3.5 py-2.5 text-sm text-[#263b57] outline-none transition placeholder:text-[#9aa7b8] focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7]";
+const labelClass = "flex flex-col gap-1 text-xs font-medium text-[#53657d]";
 
 export default async function ClientsPage() {
   const { tenant, membership } = await getCurrentTenant();
-  // read_only members can browse but not create (the action checks this too).
   const canEdit = hasRole(membership, EDITOR_ROLES);
   const clientRows = await listClients(tenant.id);
-
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8">
-      <h1 className="text-xl font-semibold">Clients</h1>
-
-      {canEdit && (
-        <form action={createClientFromForm} className="grid grid-cols-2 gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10">
-          <input name="fullName" placeholder="Full legal name" required className={`${inputClass} col-span-2`} />
-          <input name="aNumber" placeholder="A-Number" className={inputClass} />
-          <input name="dateOfBirth" type="date" placeholder="Date of birth" className={inputClass} />
-          <input name="countryOfBirth" placeholder="Country of birth" className={inputClass} />
-          <input name="primaryLanguage" placeholder="Primary language" className={inputClass} />
-          <input name="contactEmail" type="email" placeholder="Contact email" className={inputClass} />
-          <input name="contactPhone" placeholder="Contact phone" className={inputClass} />
-          <button type="submit" className="col-span-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black">
-            Add client
-          </button>
-        </form>
-      )}
-
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-black/10 text-left dark:border-white/10">
-            <th className="py-2">Name</th>
-            <th>A-Number</th>
-            <th>Country</th>
-            <th>Language</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clientRows.map((c) => (
-            <tr key={c.id} className="border-b border-black/5 dark:border-white/5">
-              <td className="py-2">{c.fullName}</td>
-              <td>{c.aNumber ?? "—"}</td>
-              <td>{c.countryOfBirth ?? "—"}</td>
-              <td>{c.primaryLanguage ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7">
+      <header className="flex flex-col justify-between gap-4 border-b border-[#e6ebf1] pb-6 sm:flex-row sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">CLIENT RECORDS</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Clients</h1><p className="mt-2 max-w-xl text-sm leading-6 text-[#7b899d]">Keep client information organized and connected to the immigration matters your firm handles.</p></div><div className="rounded-xl border border-[#e5ebf2] bg-white px-4 py-3"><p className="text-[10px] font-medium uppercase tracking-wider text-[#8b98aa]">Your workspace</p><p className="mt-1 text-sm font-semibold text-[#344a67]">{clientRows.length} {clientRows.length === 1 ? "client" : "clients"}</p></div></header>
+      {canEdit && <section className="rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.25)] sm:p-7"><div className="mb-5"><h2 className="text-base font-semibold text-[#263b57]">Add a client</h2><p className="mt-1 text-xs leading-5 text-[#8996a8]">Enter the client's basic details. You can add case-specific information in a matter.</p></div><form action={createClientFromForm} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"><label className={labelClass}>Full legal name<input name="fullName" placeholder="Client's full legal name" required className={inputClass} /></label><label className={labelClass}>A-Number<input name="aNumber" placeholder="A-Number" className={inputClass} /></label><label className={labelClass}>Date of birth<input name="dateOfBirth" type="date" className={inputClass} /></label><label className={labelClass}>Country of birth<input name="countryOfBirth" placeholder="Country" className={inputClass} /></label><label className={labelClass}>Primary language<input name="primaryLanguage" placeholder="Language" className={inputClass} /></label><label className={labelClass}>Contact email<input name="contactEmail" type="email" placeholder="name@example.com" className={inputClass} /></label><label className={labelClass}>Contact phone<input name="contactPhone" placeholder="Phone number" className={inputClass} /></label><div className="flex items-end"><button type="submit" className="w-full rounded-xl bg-[#17345f] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#244a7c] focus:outline-none focus:ring-4 focus:ring-[#dce8f7] sm:w-auto">Add client <span aria-hidden="true">→</span></button></div></form></section>}
+      <section className="overflow-hidden rounded-2xl border border-[#e4eaf1] bg-white shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)]"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0f4] px-5 py-4 sm:px-6"><div><h2 className="text-sm font-semibold text-[#2c415e]">All clients</h2><p className="mt-1 text-xs text-[#8996a8]">Client records for your firm</p></div><span className="rounded-full bg-[#f1f5fa] px-3 py-1.5 text-[11px] font-medium text-[#607794]">{clientRows.length} total</span></div>{clientRows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left"><thead><tr><th className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#8492a5]">Name</th><th className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#8492a5]">A-Number</th><th className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#8492a5]">Country of birth</th><th className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#8492a5]">Language</th></tr></thead><tbody>{clientRows.map(c=><tr key={c.id} className="border-t border-[#edf0f4] transition hover:bg-[#fafbfd]"><td className="px-5 py-4 text-sm font-semibold text-[#30445f]">{c.fullName}</td><td className="px-5 py-4 text-sm text-[#687991]">{c.aNumber ?? "—"}</td><td className="px-5 py-4 text-sm text-[#687991]">{c.countryOfBirth ?? "—"}</td><td className="px-5 py-4 text-sm text-[#687991]">{c.primaryLanguage ?? "—"}</td></tr>)}</tbody></table></div> : <div className="px-6 py-14 text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f1f5fa] text-xl text-[#7188a7]">♙</span><h3 className="mt-4 text-sm font-semibold text-[#30445f]">No clients yet</h3><p className="mx-auto mt-1 max-w-sm text-xs leading-6 text-[#8996a8]">Add your first client to start organizing their information and related matters.</p></div>}</section>
     </div>
   );
 }
