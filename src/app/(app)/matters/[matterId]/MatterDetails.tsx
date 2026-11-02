@@ -56,13 +56,13 @@ function toFormState(details: MatterDetailsShown): FormState {
   };
 }
 
-const labelClass = "text-xs font-medium text-black/70 dark:text-white/70";
+const labelClass = "text-xs font-semibold text-[#53657d]";
 const inputClass =
-  "rounded-md border border-black/15 bg-transparent px-2 py-1 text-sm disabled:opacity-60 dark:border-white/20";
+  "mt-1.5 w-full rounded-xl border border-[#dce4ee] bg-white px-3.5 py-2.5 text-sm text-[#263b57] outline-none focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7] disabled:opacity-60";
 const primaryButton =
-  "rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-black disabled:opacity-50";
+  "rounded-xl bg-[#17345f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#244a7c] disabled:opacity-50";
 const secondaryButton =
-  "rounded-md border border-black/20 px-3 py-1.5 text-xs font-medium text-black/70 dark:border-white/20 dark:text-white/70 disabled:opacity-50";
+  "rounded-xl border border-[#dce4ee] bg-white px-4 py-2.5 text-sm font-semibold text-[#536b8a] hover:bg-[#f7f9fc] disabled:opacity-50";
 
 
 export function MatterDetails({
@@ -141,7 +141,7 @@ export function MatterDetails({
   return (
     <section
       aria-labelledby={fieldId("heading")}
-      className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10"
+      className="flex flex-col gap-4 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6"
     >
       <div className="flex items-center justify-between gap-2">
         <h2 id={fieldId("heading")} className="font-medium">
@@ -153,7 +153,7 @@ export function MatterDetails({
           </button>
         )}
       </div>
-      <p className="text-xs text-black/50 dark:text-white/50">
+      <p className="text-xs leading-6 text-[#8290a4]">
         Every skill run reads these details as they are when the run is queued.
       </p>
 
@@ -161,8 +161,8 @@ export function MatterDetails({
         <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
           {shown.map(([label, value]) => (
             <div key={label} className="flex flex-col">
-              <dt className="text-xs text-black/50 dark:text-white/50">{label}</dt>
-              <dd className={value ? "" : "text-black/40 dark:text-white/40"}>{value ?? "Not set"}</dd>
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-[#91a0b4]">{label}</dt>
+              <dd className={value ? "mt-1 text-sm font-medium text-[#344b66]" : "mt-1 text-sm text-[#a0aaba]"}>{value ?? "Not set"}</dd>
             </div>
           ))}
         </dl>
