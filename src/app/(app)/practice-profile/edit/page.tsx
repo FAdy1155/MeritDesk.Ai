@@ -11,7 +11,7 @@ export default async function EditPracticeProfilePage() {
   const { tenant, membership } = await getCurrentTenant();
   if (!hasRole(membership, EDITOR_ROLES)) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto w-full max-w-5xl">
         <h1 className="mb-6 text-xl font-semibold">Practice profile setup</h1>
         <p className="text-sm text-black/60 dark:text-white/60">
           Your role in this firm is read-only, so you can view the practice profile but not edit it.
@@ -27,8 +27,8 @@ export default async function EditPracticeProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-xl font-semibold">Practice profile setup</h1>
-      <p className="mb-6 text-sm text-black/60 dark:text-white/60">
+      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">WORKFLOW CONFIGURATION</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Edit practice profile</h1>
+      <p className="mb-7 mt-3 max-w-3xl text-sm leading-7 text-[#7b899d]">
         Version {draft.versionNumber}. Leave a field empty until the firm has a real answer: an empty field reaches
         the skills as &quot;Not set by the firm&quot; and each skill applies its own default. Never guess the firm&apos;s
         practices.
