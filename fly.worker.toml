@@ -6,7 +6,7 @@
 #
 # `app` below is a placeholder — run `fly apps create <your-unique-name>`
 # first and replace this with whatever name you got.
-app = "REPLACE-WITH-YOUR-WORKER-APP-NAME"
+app = "meritdesk-ai-worker"
 primary_region = "iad"
 
 # Graceful shutdown on deploys and restarts (src/worker.ts). Fly's default
