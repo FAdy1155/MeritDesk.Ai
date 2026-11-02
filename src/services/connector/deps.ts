@@ -3,8 +3,12 @@ import { withGlobalReadContext } from "@/db/client";
 import { readEntitlement } from "@/lib/billing/entitlement";
 import { getConnectorSettings } from "@/lib/connector/settings";
 import {
+  addMatterPartyForConnector,
+  createClientForConnector,
+  createMatterForConnector,
   getMatterCaseTypeForConnector,
   getMatterForConnector,
+  listClientsForConnector,
   getSkillRunForConnector,
   listLegalUpdatesForConnector,
   listMattersForConnector,
@@ -35,6 +39,10 @@ export const defaultConnectorDeps: ConnectorDeps = {
     eoirQuery: queryEoirStats,
   },
   caseWork: {
+    listClients: listClientsForConnector,
+    createClient: createClientForConnector,
+    createMatter: createMatterForConnector,
+    addMatterParty: addMatterPartyForConnector,
     listMatters: listMattersForConnector,
     getMatter: getMatterForConnector,
     getMatterCaseType: getMatterCaseTypeForConnector,

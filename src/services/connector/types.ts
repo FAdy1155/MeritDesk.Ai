@@ -77,6 +77,10 @@ export type ConnectorDeps = {
     eoirQuery: typeof queryEoirStats;
   };
   caseWork: {
+    listClients: typeof caseWork.listClientsForConnector;
+    createClient: typeof caseWork.createClientForConnector;
+    createMatter: typeof caseWork.createMatterForConnector;
+    addMatterParty: typeof caseWork.addMatterPartyForConnector;
     listMatters: typeof caseWork.listMattersForConnector;
     getMatter: typeof caseWork.getMatterForConnector;
     getMatterCaseType: typeof caseWork.getMatterCaseTypeForConnector;

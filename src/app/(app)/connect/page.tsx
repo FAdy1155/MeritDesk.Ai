@@ -33,16 +33,16 @@ export default async function ConnectPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className={sectionClass} aria-labelledby="claude-personal">
-          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f2f6] text-sm font-semibold text-[#33445e]">C</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">PERSONAL PLANS</p><h2 id="claude-personal" className="text-base font-semibold text-[#293f5c]">Claude Free, Pro or Max</h2></div></div>
-          <ol className={stepsClass}><li>Open Claude at claude.ai or in the desktop app, then go to Settings → Connectors.</li><li>Choose Add custom connector, name it {PRODUCT_NAME}, and paste the address above.</li><li>Choose Connect. Sign in to {PRODUCT_NAME}, select {tenant.name} on the consent screen and allow access.</li><li>In a chat, open the + menu → Connectors and turn {PRODUCT_NAME} on. Ask Claude to search the library, list matters or run a skill.</li></ol>
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f2f6] text-sm font-semibold text-[#33445e]">C</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">PERSONAL PLANS</p><h2 id="claude-personal" className="text-base font-semibold text-[#293f5c]">Claude Pro, Max, Team or Enterprise</h2></div></div>
+          <ol className={stepsClass}><li>Open Claude on the web or desktop, then go to Settings → Connectors.</li><li>Choose Add custom connector, name it {PRODUCT_NAME}, and paste the address above. This feature requires Claude Pro, Max, Team or Enterprise.</li><li>Choose Connect. Sign in to {PRODUCT_NAME}, select {tenant.name} on the consent screen and allow access.</li><li>In a chat, open the + menu → Connectors and turn {PRODUCT_NAME} on. Ask Claude to search the library, create a client or matter, list your matters, or run a skill.</li></ol>
         </section>
         <section className={sectionClass} aria-labelledby="claude-team">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f2f6] text-sm font-semibold text-[#33445e]">C</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">TEAM WORKSPACES</p><h2 id="claude-team" className="text-base font-semibold text-[#293f5c]">Claude Team or Enterprise</h2></div></div>
-          <ol className={stepsClass}><li>A Claude organization Owner adds the connector once: Organization settings → Connectors → Add → Custom → Web.</li><li>Each member connects under Customize → Connectors, signs in to {PRODUCT_NAME}, selects {tenant.name} and allows access.</li><li>In a chat, turn the connector on from the + menu under Connectors.</li></ol>
+          <ol className={stepsClass}><li>A Claude organization Owner or Primary Owner adds it once: Settings → Connectors → Organization connectors → Add custom connector.</li><li>Each member opens Settings → Connectors, connects to {PRODUCT_NAME}, signs in with their own account, selects {tenant.name} and allows access.</li><li>In a chat, turn the connector on from the + menu under Connectors.</li></ol>
         </section>
         <section className={sectionClass} aria-labelledby="chatgpt">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eaf3ef] text-sm font-semibold text-[#39765e]">AI</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">CUSTOM MCP CONNECTOR</p><h2 id="chatgpt" className="text-base font-semibold text-[#293f5c]">ChatGPT</h2></div></div>
-          <ol className={stepsClass}><li>Open ChatGPT settings and find the connector or custom MCP server option. A Business or Enterprise workspace admin may first need to allow custom MCP servers.</li><li>Add a custom server, paste the address above and choose OAuth authentication.</li><li>Review the permissions, continue, then sign in to {PRODUCT_NAME}, select {tenant.name} and allow access.</li><li>In a chat, select the connector from the tools menu or with @. Deep research can use its search and fetch tools.</li></ol>
+          <ol className={stepsClass}><li>Full write actions require ChatGPT Business, Enterprise or Edu. ChatGPT Pro supports custom MCP read/fetch tools only. Open ChatGPT on the web and go to Plugins.</li><li>Select + → Add custom MCP server. Name it {PRODUCT_NAME}, paste the HTTPS server address above and choose OAuth authentication.</li><li>Review the risk warning and acknowledge it, then choose Create as a plugin. Complete sign-in to {PRODUCT_NAME}, select {tenant.name} and review the discovered tools.</li><li>In a new chat, select the plugin from the available apps/plugins or type @ and choose {PRODUCT_NAME}. Confirm any action when ChatGPT asks.</li></ol>
         </section>
         <section className={sectionClass} aria-labelledby="what-next">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf2fa] text-sm font-semibold text-[#41699f]">✓</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">AFTER CONNECTING</p><h2 id="what-next" className="text-base font-semibold text-[#293f5c]">A few things to know</h2></div></div>
@@ -55,6 +55,23 @@ export default async function ConnectPage() {
           </ul>
         </section>
       </div>
+      <section className="rounded-2xl border border-[#e4eaf1] bg-white p-5 sm:p-7">
+        <p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#91a0b4]">TRY IT IN YOUR AI CHAT</p>
+        <h2 className="mt-2 text-lg font-semibold text-[#293f5e]">What to ask MeritDesk</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[
+            "Search the immigration law library for current authority on this issue and link every source to its official copy.",
+            "Create a client record for [name]. Ask me for any missing details and confirm the exact information before saving.",
+            "Create an asylum (defensive) matter with these dates, then show me the new matter id.",
+            "List the matters for my firm, show me the skills for one matter, and explain what each suitable skill produces.",
+          ].map((prompt) => <div key={prompt} className="rounded-xl bg-[#f7f9fc] p-4 text-sm leading-6 text-[#536780]">“{prompt}”</div>)}
+        </div>
+        <div className="mt-5 rounded-xl border border-[#e7edf5] p-4">
+          <h3 className="text-sm font-semibold text-[#304967]">Uploading client documents</h3>
+          <p className="mt-1 text-sm leading-6 text-[#748399]">File uploads still use the secure matter portal. Open a matter, upload its documents, and wait for the malware scan and text extraction to finish. Then your connected assistant can work with eligible, clean documents through a confirmed skill run.</p>
+          <Link href="/matters" className="mt-3 inline-flex text-xs font-semibold text-[#416da5] hover:text-[#244d83]">Open secure matter upload area →</Link>
+        </div>
+      </section>
       <aside className="rounded-2xl border border-[#e4eaf1] bg-white p-5 sm:p-6"><h2 className="text-sm font-semibold text-[#30445f]">Understand case-work access</h2><p className="mt-2 text-sm leading-6 text-[#7b899d]">When case-work tools are enabled, information returned from a matter becomes part of the conversation in your AI provider and is subject to that provider&apos;s terms. Your firm controls whether these tools are enabled. Review the disclosure on the <Link href="/firm" className="font-semibold text-[#416da5] hover:underline">Firm settings page</Link> before turning them on. Every case-work connector call is recorded in the firm&apos;s audit log.</p></aside>
     </div>
   );

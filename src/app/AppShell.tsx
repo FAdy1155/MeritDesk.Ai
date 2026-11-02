@@ -41,7 +41,7 @@ export async function AppShell({ children, enforceLock }: { children: React.Reac
           <AppNavigation variant="sidebar" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-30 flex min-h-[68px] items-center justify-between gap-4 border-b border-[#e8edf4] bg-white/95 px-4 backdrop-blur-xl sm:px-7">
-              <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#9aa7b9]">Firm workspace</p><p className="truncate text-sm font-semibold text-[#243a5b]">{state.firmName}</p></div>
+              <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#9aa7b9]">Account & connector</p><p className="truncate text-sm font-semibold text-[#243a5b]">{state.firmName}</p></div>
               <div className="flex shrink-0 items-center gap-3"><OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/connect" afterSelectOrganizationUrl="/" /><span className="h-7 w-px bg-[#e8edf4]" /><UserButton /></div>
             </header>
             <AppNavigation variant="mobile" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />
@@ -51,7 +51,7 @@ export async function AppShell({ children, enforceLock }: { children: React.Reac
                 {enforceLock && state.entitlement.state === "locked" ? <LockScreen firmName={state.firmName} entitlement={state.entitlement} canBill={state.canBill} /> : children}
               </div>
             </main>
-            <footer className="border-t border-[#e8edf4] bg-white px-7 py-4 text-[11px] text-[#9aa7b9]">© {new Date().getFullYear()} {PRODUCT_NAME} <span className="mx-2">·</span> Built for immigration law practices</footer>
+            <footer className="border-t border-[#e8edf4] bg-white px-7 py-4 text-[11px] text-[#9aa7b9]">© {new Date().getFullYear()} {PRODUCT_NAME} <span className="mx-2">·</span> Your legal work happens in Claude or ChatGPT</footer>
           </div>
         </div>
       ) : (

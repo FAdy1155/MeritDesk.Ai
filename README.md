@@ -1,9 +1,17 @@
 # MeritDesk.AI
 
-Multi-tenant SaaS for immigration case review and packet building, built on top of
-the firm's Claude Skills (see `skills-content/`). See `.claude/plans/` (in the
-session that built this) for the original architecture plan — this README is
-the practical "how do I actually run this" companion.
+A plugin-first AI connector for U.S. immigration law practices. MeritDesk exposes
+a remote MCP server that brings its official immigration-law library and
+firm-controlled case-work tools into Claude, ChatGPT and other recognized MCP
+clients. The AI assistant is the primary work interface; the website is the
+account, billing, firm-permissions and connector-setup portal. The underlying
+matter, client and document services remain available for secure administration
+and file uploads.
+
+The legal skills are built on the firm's Claude Skills (see `skills-content/`).
+See `.claude/plans/` (in the session that built this) for the original
+architecture plan — this README is the practical "how do I actually run this"
+companion.
 
 **Deploying? Start with [DEPLOY.md](DEPLOY.md):** every step from this code
 to a running app that Claude and ChatGPT can connect to, in order.

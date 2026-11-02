@@ -16,13 +16,14 @@ export function PublicShell({ children, signedIn }: { children: React.ReactNode;
             <div className="hidden items-center gap-6 md:flex">
               <Link href="/#features" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">Product</Link>
               <Link href="/#how-it-works" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">How it works</Link>
+              <Link href="/setup" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">Connect</Link>
               <Link href="/#security" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">Security</Link>
               <Link href="/pricing" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">Pricing</Link>
             </div>
-            <Link href="/pricing" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458] md:hidden">Pricing</Link>
+            <div className="flex items-center gap-3 md:hidden"><Link href="/setup" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">Connect</Link><Link href="/pricing" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">Pricing</Link></div>
             {signedIn ? (
-              <Link href="/" className={buttonClass}>
-                Open the app
+              <Link href="/connect" className={buttonClass}>
+                Connector setup
               </Link>
             ) : (
               <>

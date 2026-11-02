@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MeritDesk.AI",
-  description: "Attorney work-product review and drafting for immigration matters.",
+  title: "MeritDesk.AI | Immigration Law AI Connector",
+  description: "Official immigration-law research and firm-controlled case-work tools inside Claude and ChatGPT.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

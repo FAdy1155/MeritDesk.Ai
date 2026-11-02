@@ -45,6 +45,10 @@ and safety. 6. Submitting to the directories. 7. Researched requirements.
 | `search_eoir_judges` | library | everyone | read-only | no |
 | `eoir_judge_profile` | library | everyone | read-only | no |
 | `query_eoir_stats` | library | everyone | read-only | no |
+| `list_clients` | case work | every role | read-only | yes |
+| `create_client` | case work | owner/admin, attorney, paralegal (`EDITOR_ROLES`) | not read-only, not destructive, open world, not idempotent | yes |
+| `create_matter` | case work | owner/admin, attorney, paralegal (`EDITOR_ROLES`) | not read-only, not destructive, open world, not idempotent | yes |
+| `add_matter_party` | case work | owner/admin, attorney, paralegal (`EDITOR_ROLES`) | not read-only, not destructive, open world, not idempotent | yes |
 | `list_matters` | case work | every role | read-only | yes |
 | `get_matter` | case work | every role | read-only | yes |
 | `list_skills` | case work | every role | read-only | yes |
@@ -77,13 +81,15 @@ next call.
 Every tool has a `title` and `readOnlyHint`/`destructiveHint` (the Claude
 directory requirement); read-only tools also say `idempotentHint: true` and
 `openWorldHint: false` (ChatGPT uses these for confirmation behavior).
-Two tools are marked not read-only, so Claude and ChatGPT ask the user
-before calling them, and both also refuse any call without `confirm: true`:
-`run_skill` creates a run, spends the firm's model budget and may add
-generated documents to the matter; `get_document_download_link` lets a
-client document leave the app through a bearer link into a third-party
-conversation. Both re-check the caller with Clerk without the role cache
-before they run (section 4).
+Five tools are marked not read-only, so Claude and ChatGPT ask the user
+before calling them, and each refuses any call without `confirm: true`:
+`create_client` saves the client details supplied in the conversation;
+`create_matter` creates a matter; `add_matter_party` links a client to a
+matter; `run_skill` creates a run, spends the firm's model budget and may
+add generated documents to the matter; `get_document_download_link` lets
+a client document leave the app through a bearer link into a third-party
+conversation. Each re-checks the caller with Clerk without the role cache
+before it runs (section 4).
 
 **search and fetch** have the shapes ChatGPT deep research and company
 knowledge expect: `search({ query })` returns `{ results: [{ id, title, url }] }`

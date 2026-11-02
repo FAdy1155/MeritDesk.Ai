@@ -1,9 +1,10 @@
 import "server-only";
 import { and, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { withTenantContext, type db, type TenantTransactionRunner } from "@/db/client";
-import { clients, documents, matterParties, matters, skillRuns } from "@/db/schema";
+import { clients, documents, matterParties, matterPartyRoleEnum, matters, skillRuns } from "@/db/schema";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit/service";
 import { caseTypeLabel } from "@/lib/matters/case-types";
+import type { NewMatterValues } from "@/lib/matters/details-schema";
 import { matterStatusLabel, matterVenueLabel } from "@/lib/matters/details";
 import { readEscalationFlags } from "@/lib/skill-runs/snapshot";
 import { listLegalUpdatesForTenant, type LegalUpdateView } from "@/services/monitoring/service";
@@ -54,6 +55,147 @@ export async function recordConnectorCallOutcome(
   inTenant: TenantTransactionRunner = withTenantContext
 ): Promise<void> {
   await inTenant(ctx.tenantId, (tx) => recordCall(tx, ctx, { ...ids, outcome }));
+}
+
+export type ConnectorNewClientInput = {
+  fullName: string;
+  aNumber?: string;
+  dateOfBirth?: string;
+  countryOfBirth?: string;
+  primaryLanguage?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+};
+
+/** Client names and ids only; no A-number, date of birth or contact details leave the database. */
+export async function listClientsForConnector(
+  ctx: ConnectorCallContext,
+  params: { limit: number; offset: number },
+  inTenant: TenantTransactionRunner = withTenantContext
+): Promise<{ clients: { id: string; fullName: string; createdAt: string }[]; total: number }> {
+  return inTenant(ctx.tenantId, async (tx) => {
+    const [{ total }] = await tx.select({ total: count() }).from(clients).where(eq(clients.tenantId, ctx.tenantId));
+    const rows = await tx
+      .select({ id: clients.id, fullName: clients.fullName, createdAt: clients.createdAt })
+      .from(clients)
+      .where(eq(clients.tenantId, ctx.tenantId))
+      .orderBy(desc(clients.createdAt))
+      .limit(params.limit)
+      .offset(params.offset);
+    await recordCall(tx, ctx, {
+      outcome: "ok",
+      count: rows.length,
+      clientIds: rows.map((row) => row.id),
+      limit: params.limit,
+      offset: params.offset,
+    });
+    return {
+      clients: rows.map((row) => ({ id: row.id, fullName: row.fullName, createdAt: row.createdAt.toISOString() })),
+      total: Number(total),
+    };
+  });
+}
+
+/** Creates a client and writes both business and connector audit entries in one tenant transaction. */
+export async function createClientForConnector(
+  ctx: ConnectorCallContext,
+  input: ConnectorNewClientInput,
+  inTenant: TenantTransactionRunner = withTenantContext
+): Promise<{ id: string; fullName: string }> {
+  return inTenant(ctx.tenantId, async (tx) => {
+    const [row] = await tx.insert(clients).values({
+      tenantId: ctx.tenantId,
+      fullName: input.fullName,
+      aNumber: input.aNumber ?? null,
+      dateOfBirth: input.dateOfBirth ?? null,
+      countryOfBirth: input.countryOfBirth ?? null,
+      primaryLanguage: input.primaryLanguage ?? null,
+      contactEmail: input.contactEmail ?? null,
+      contactPhone: input.contactPhone ?? null,
+    }).returning({ id: clients.id, fullName: clients.fullName });
+    await recordAuditEvent(tx, {
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: AUDIT_ACTIONS.clientCreated,
+      resourceType: "client",
+      resourceId: row.id,
+    });
+    await recordCall(tx, ctx, { outcome: "created", clientId: row.id });
+    return row;
+  });
+}
+
+/** Creates a matter using the same validated fields as the web form. */
+export async function createMatterForConnector(
+  ctx: ConnectorCallContext,
+  values: NewMatterValues,
+  inTenant: TenantTransactionRunner = withTenantContext
+): Promise<{ id: string; caseType: string; createdAt: string }> {
+  return inTenant(ctx.tenantId, async (tx) => {
+    const [row] = await tx.insert(matters).values({
+      tenantId: ctx.tenantId,
+      caseType: values.caseType,
+      venue: values.venue || null,
+      circuit: values.circuit || null,
+      court: values.court || null,
+      ntaDate: values.ntaDate || null,
+      oneYearClockDate: values.oneYearClockDate || null,
+      nextHearingDate: values.nextHearingDate || null,
+    }).returning({ id: matters.id, caseType: matters.caseType, createdAt: matters.createdAt });
+    await recordAuditEvent(tx, {
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: AUDIT_ACTIONS.matterCreated,
+      resourceType: "matter",
+      resourceId: row.id,
+      after: { caseType: row.caseType },
+    });
+    await recordCall(tx, ctx, { outcome: "created", matterId: row.id });
+    return { id: row.id, caseType: row.caseType, createdAt: row.createdAt.toISOString() };
+  });
+}
+
+/** Links one of this firm's clients to one of this firm's matters, atomically audited. */
+export async function addMatterPartyForConnector(
+  ctx: ConnectorCallContext,
+  params: { matterId: string; clientId: string; role: string },
+  inTenant: TenantTransactionRunner = withTenantContext
+): Promise<{ id: string }> {
+  return inTenant(ctx.tenantId, async (tx) => {
+    if (!(matterPartyRoleEnum.enumValues as readonly string[]).includes(params.role)) {
+      throw new Error("Choose a valid party role.");
+    }
+    const [matter] = await tx.select({ id: matters.id }).from(matters)
+      .where(and(eq(matters.id, params.matterId), eq(matters.tenantId, ctx.tenantId))).limit(1);
+    if (!matter) throw new Error("Matter not found.");
+    const [client] = await tx.select({ id: clients.id }).from(clients)
+      .where(and(eq(clients.id, params.clientId), eq(clients.tenantId, ctx.tenantId))).limit(1);
+    if (!client) throw new Error("Client not found.");
+    const [existing] = await tx.select({ id: matterParties.id }).from(matterParties)
+      .where(and(
+        eq(matterParties.tenantId, ctx.tenantId),
+        eq(matterParties.matterId, params.matterId),
+        eq(matterParties.clientId, params.clientId),
+        eq(matterParties.role, params.role as (typeof matterPartyRoleEnum.enumValues)[number])
+      )).limit(1);
+    if (existing) throw new Error("That client is already linked to this matter in that role.");
+    const [row] = await tx.insert(matterParties).values({
+      tenantId: ctx.tenantId,
+      matterId: params.matterId,
+      clientId: params.clientId,
+      role: params.role as (typeof matterPartyRoleEnum.enumValues)[number],
+    }).returning({ id: matterParties.id });
+    await recordAuditEvent(tx, {
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: AUDIT_ACTIONS.matterPartyAdded,
+      resourceType: "matter_party",
+      resourceId: row.id,
+      after: { matterId: params.matterId, clientId: params.clientId, role: params.role },
+    });
+    await recordCall(tx, ctx, { outcome: "created", matterId: params.matterId, clientId: params.clientId });
+    return row;
+  });
 }
 
 export type ConnectorParty = { name: string; role: string };

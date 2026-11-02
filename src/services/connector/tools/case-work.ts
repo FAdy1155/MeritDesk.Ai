@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { safeErrorMessage } from "@/lib/errors/safe-error";
 import { MATTER_STATUSES } from "@/lib/matters/details";
-import { caseTypeLabel } from "@/lib/matters/case-types";
+import { matterPartyRoleEnum } from "@/db/schema";
+import { newMatterInputSchema } from "@/lib/matters/details-schema";
+import { caseTypeLabel, MATTER_CASE_TYPES } from "@/lib/matters/case-types";
 import { EDITOR_ROLES } from "@/lib/roles";
 import { MAX_ATTORNEY_NOTE_CHARS } from "@/lib/skill-runs/snapshot";
 import { DOWNLOAD_URL_EXPIRES_SECONDS } from "@/lib/s3";
@@ -51,6 +53,124 @@ function callContext(ctx: ConnectorToolContext, tool: string): ConnectorCallCont
 function firmData(lead: string, value: unknown, hint?: string) {
   return textResult(`${lead}\n${frameData(FIRM_SOURCE, dataJson(value), undefined, hint)}`);
 }
+
+const listClientsTool = defineConnectorTool({
+  name: "list_clients",
+  title: "List the firm's clients",
+  description:
+    "Lists this firm's client records by name and id only. It never returns A-numbers, dates of birth or contact details. Use a returned client id with add_matter_party to link a client to a matter. Every call is recorded in the firm's audit log.",
+  group: "case_work",
+  inputSchema: z.object({
+    limit: z.number().int().min(1).max(50).optional().describe("Clients per call (default 20)."),
+    offset: z.number().int().min(0).max(10_000).optional().describe("Clients to skip for the next page."),
+  }),
+  annotations: READ_ONLY,
+  async run(q, ctx) {
+    const limit = q.limit ?? 20;
+    const offset = q.offset ?? 0;
+    const result = await ctx.deps.caseWork.listClients(callContext(ctx, "list_clients"), { limit, offset });
+    const more = offset + result.clients.length < result.total ? ` More: call list_clients with offset ${offset + result.clients.length}.` : "";
+    return firmData(`Clients ${result.clients.length ? `${offset + 1}-${offset + result.clients.length}` : "none"} of ${result.total}.${more}`, result.clients);
+  },
+});
+
+const createClientTool = defineConnectorTool({
+  name: "create_client",
+  title: "Create a client",
+  description:
+    "Creates a client record for this firm. Only provide personal details the user has explicitly supplied and confirmed. Any values passed here are also part of the conversation with the connected AI provider. A-number, date of birth and contact details are optional. Requires confirm: true after the user reviews the exact details. Available to owner/admin, attorney and paralegal roles; audited.",
+  group: "case_work",
+  inputSchema: z.object({
+    full_name: z.string().trim().min(1).max(200),
+    a_number: z.string().trim().max(20).optional(),
+    date_of_birth: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((v) => {
+      const date = new Date(v + "T00:00:00.000Z");
+      return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === v;
+    }, "Enter a real date as YYYY-MM-DD.").optional(),
+    country_of_birth: z.string().trim().max(100).optional(),
+    primary_language: z.string().trim().max(100).optional(),
+    contact_email: z.string().trim().email().max(254).optional(),
+    contact_phone: z.string().trim().max(50).optional(),
+    confirm: z.literal(true).describe("The user has confirmed these exact client details should be saved."),
+  }),
+  annotations: ACTING,
+  availableTo: (ctx) => EDITOR_ROLES.includes(ctx.identity.role),
+  freshIdentity: true,
+  async run(q, ctx) {
+    const call = callContext(ctx, "create_client");
+    try {
+      const created = await ctx.deps.caseWork.createClient(call, {
+        fullName: q.full_name,
+        aNumber: q.a_number,
+        dateOfBirth: q.date_of_birth,
+        countryOfBirth: q.country_of_birth,
+        primaryLanguage: q.primary_language,
+        contactEmail: q.contact_email,
+        contactPhone: q.contact_phone,
+      });
+      return textResult(`Created client "${created.fullName}". client_id: ${created.id}. Use list_clients to find it later or add_matter_party to link it to a matter.`);
+    } catch (err) {
+      await ctx.deps.caseWork.recordOutcome(call, "failed");
+      return errorResult(`The client could not be created (${safeErrorMessage(err)}).`);
+    }
+  },
+});
+
+const createMatterTool = defineConnectorTool({
+  name: "create_matter",
+  title: "Create an immigration matter",
+  description:
+    "Creates a matter using the same case-type and venue choices as the MeritDesk matter form. caseType must be one of: " + MATTER_CASE_TYPES.map(([key, label]) => key + " (" + label + ")").join("; ") + ". It does not automatically attach a client; use add_matter_party after creating or finding the client. Requires confirm: true after the user reviews the case type and dates. Available to owner/admin, attorney and paralegal roles; audited.",
+  group: "case_work",
+  inputSchema: newMatterInputSchema.extend({
+    confirm: z.literal(true).describe("The user has confirmed this exact matter should be created."),
+  }),
+  annotations: ACTING,
+  availableTo: (ctx) => EDITOR_ROLES.includes(ctx.identity.role),
+  freshIdentity: true,
+  async run(q, ctx) {
+    const values = { caseType: q.caseType, venue: q.venue, circuit: q.circuit, court: q.court, ntaDate: q.ntaDate, oneYearClockDate: q.oneYearClockDate, nextHearingDate: q.nextHearingDate };
+    const call = callContext(ctx, "create_matter");
+    try {
+      const created = await ctx.deps.caseWork.createMatter(call, values);
+      return textResult(`Created matter ${created.id} (case type: ${caseTypeLabel(created.caseType)}). Use add_matter_party to link a client, get_matter to inspect it, and list_skills to see available legal skills.`);
+    } catch (err) {
+      await ctx.deps.caseWork.recordOutcome(call, "failed");
+      return errorResult(`The matter could not be created (${safeErrorMessage(err)}).`);
+    }
+  },
+});
+
+const addMatterPartyTool = defineConnectorTool({
+  name: "add_matter_party",
+  title: "Link a client to a matter",
+  description:
+    "Links an existing client of this firm to an existing matter of this firm with a party role. Use list_clients and list_matters to obtain ids. Requires confirm: true after the user confirms the client, matter and role. Available to owner/admin, attorney and paralegal roles; audited.",
+  group: "case_work",
+  inputSchema: z.object({
+    matter_id: z.string().uuid(),
+    client_id: z.string().uuid(),
+    role: z.enum(matterPartyRoleEnum.enumValues),
+    confirm: z.literal(true).describe("The user has confirmed this client, matter and party role should be linked."),
+  }),
+  annotations: ACTING,
+  availableTo: (ctx) => EDITOR_ROLES.includes(ctx.identity.role),
+  freshIdentity: true,
+  async run(q, ctx) {
+    const call = callContext(ctx, "add_matter_party");
+    try {
+      const result = await ctx.deps.caseWork.addMatterParty(call, {
+        matterId: q.matter_id,
+        clientId: q.client_id,
+        role: q.role,
+      });
+      return textResult(`Linked client ${q.client_id} to matter ${q.matter_id} as ${q.role}. Party id: ${result.id}.`);
+    } catch (err) {
+      await ctx.deps.caseWork.recordOutcome(call, "refused", { matterId: q.matter_id });
+      return errorResult(`The client could not be linked to this matter (${safeErrorMessage(err)}).`);
+    }
+  },
+});
 
 const listMattersTool = defineConnectorTool({
   name: "list_matters",
@@ -301,6 +421,10 @@ const documentDownloadLinkTool = defineConnectorTool({
 });
 
 export const CASE_WORK_TOOLS: readonly ConnectorTool[] = [
+  listClientsTool,
+  createClientTool,
+  createMatterTool,
+  addMatterPartyTool,
   listMattersTool,
   getMatterTool,
   listSkillsTool,
