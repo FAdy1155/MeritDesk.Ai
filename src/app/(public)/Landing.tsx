@@ -76,7 +76,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="border-y border-[#e9edf3] bg-white">
+      <section id="features" className="border-y border-[#e9edf3] bg-white">
         <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
           <div className="mx-auto mb-12 max-w-2xl text-center"><p className="text-[11px] font-bold uppercase tracking-[.2em] text-[#6683b0]">One connected workspace</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-[#182943] sm:text-4xl">The tools your immigration practice needs, working together.</h2><p className="mt-4 text-sm leading-7 text-[#77859a]">Less time moving between disconnected tools. A clearer place for your team to manage the work and use AI with the right context.</p></div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -85,7 +85,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="bg-[#f5f7fa]">
+      <section id="how-it-works" className="bg-[#f5f7fa]">
         <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
           <div className="grid gap-12 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
             <div><p className="text-[11px] font-bold uppercase tracking-[.2em] text-[#6683b0]">A practical workflow</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-[#182943] sm:text-4xl">From firm setup to day-to-day legal work.</h2><p className="mt-5 max-w-sm text-sm leading-7 text-[#77859a]">Start with the information your firm already has. Add your team, organize the matters and connect the AI tools you use.</p><Link href="/sign-up" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-[#315d9c] transition hover:gap-3">Create your workspace <Arrow /></Link></div>
@@ -94,14 +94,14 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="border-y border-[#e9edf3] bg-white">
+      <section id="security" className="border-y border-[#e9edf3] bg-white">
         <div className="mx-auto grid max-w-7xl gap-12 px-6 py-20 sm:px-8 lg:grid-cols-2 lg:items-center lg:px-10 lg:py-24">
           <div><p className="text-[11px] font-bold uppercase tracking-[.2em] text-[#6683b0]">AI, with firm context</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-[#182943] sm:text-4xl">Bring your firm's work into the AI tools you already use.</h2><p className="mt-5 text-sm leading-7 text-[#77859a]">MeritDesk.AI connects to Claude and ChatGPT through a remote MCP connector. Each person signs in with their own account. Your firm decides whether case-work tools are enabled, and case-work activity is recorded in the firm's audit log.</p><p className="mt-4 text-sm leading-7 text-[#77859a]">When case-work access is enabled, information returned from a matter is shared with the AI provider as part of that conversation and is subject to that provider's terms. Review the controls and disclosure before enabling it.</p><Link href="/pricing" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[#315d9c]">Explore plans <Arrow /></Link></div>
           <div className="rounded-2xl border border-[#e4eaf1] bg-[#fafbfd] p-6 sm:p-8"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8797ad]">Designed for firm oversight</p><div className="mt-6 space-y-5">{[["Individual sign-in","Every team member connects with their own account."],["Firm-controlled permissions","Owners control access to case-work tools."],["Activity audit trail","Case-work connector calls are recorded for the firm."],["Official-source research","The legal library links back to source documents."]].map(([title, desc],i)=><div key={title} className="flex gap-4"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf0f8] text-xs font-semibold text-[#41699f]">0{i+1}</span><div><h3 className="text-sm font-semibold text-[#2d415e]">{title}</h3><p className="mt-1 text-sm leading-6 text-[#7c899b]">{desc}</p></div></div>)}</div></div>
         </div>
       </section>
 
-      <section className="bg-[#17345f]">
+      <section id="pricing-summary" className="bg-[#17345f]">
         <div className="mx-auto flex max-w-7xl flex-col gap-9 px-6 py-16 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-20">
           <div className="max-w-2xl"><p className="text-[11px] font-bold uppercase tracking-[.2em] text-[#a9c1e4]">Straightforward pricing</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">30 days to see how it fits your practice.</h2><p className="mt-5 text-sm leading-7 text-[#c2cfe0]">Every firm starts with a 30-day free trial, with no card required. After that, it is $20 per user per month, billed to the firm. Seats follow your members, billing renews automatically, and receipts are sent by email. Cancel from the Billing page at any time.</p></div>
           <div className="flex shrink-0 flex-col items-start gap-4 sm:flex-row sm:items-center"><Link href="/sign-up" className="inline-flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-[#18365f] transition hover:-translate-y-0.5 hover:bg-[#edf3fb]">Start free month <Arrow /></Link><Link href="/pricing" className="inline-flex items-center gap-2 text-sm font-semibold text-white/85 transition hover:text-white">Full pricing details <Arrow diagonal /></Link></div>
