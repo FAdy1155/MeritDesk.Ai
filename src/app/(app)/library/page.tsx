@@ -29,9 +29,9 @@ export default async function LibraryPage() {
   const total = sources.reduce((n, s) => n + s.documentCount, 0);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">Library</h1>
+        <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">LEGAL RESEARCH</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Legal library</h1>
         <p className={`text-sm ${muted}`}>
           The app&apos;s own copy of the public, official sources of immigration law: decisions, statutes and regulations,
           agency manuals and guidance, collected directly from the government and court sites and refreshed every day.
@@ -42,20 +42,20 @@ export default async function LibraryPage() {
         <p className={`text-sm ${muted}`}>
           {total.toLocaleString("en-US")} documents in {sources.length} collected source{sources.length === 1 ? "" : "s"}.
         </p>
-        <form action="/library/search" className="flex gap-2">
+        <form action="/library/search" className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             name="q"
             type="search"
             placeholder="Search the library: words, a quoted phrase, or a citation such as 27 I&N Dec. 316"
-            className="flex-1 rounded-md border border-black/20 bg-transparent px-3 py-1.5 text-sm dark:border-white/20"
+            className="min-h-11 flex-1 rounded-xl border border-[#dce4ee] bg-white px-4 py-3 text-sm text-[#263b57] outline-none placeholder:text-[#9aa7b8] focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7]"
           />
-          <button type="submit" className="rounded-md bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black">
+          <button type="submit" className="rounded-xl bg-[#17345f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#244a7c]">
             Search
           </button>
         </form>
         {canImport && (
           <p className="text-sm">
-            <Link href="/library/import" className="underline">
+            <Link href="/library/import" className="font-semibold text-[#416da5] underline decoration-[#c4d2e4] underline-offset-2 hover:text-[#244d83]">
               Import from official site
             </Link>{" "}
             <span className={muted}>(for the sources whose websites refuse automated tools)</span>
@@ -85,7 +85,7 @@ function GroupCard({ group, sources }: { group: LibraryGroup; sources: LibrarySo
   const lastSuccess = sources.reduce<Date | null>((latest, s) => (s.lastSuccessAt && (!latest || s.lastSuccessAt > latest) ? s.lastSuccessAt : latest), null);
   const collecting = sources.some(backfillInProgress);
   return (
-    <article className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm dark:border-white/10">
+    <article className="flex flex-col gap-2 rounded-2xl border border-[#e4eaf1] bg-white p-5 text-sm shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-semibold">{group.name}</h3>
         <StatusBadgeView badge={badge} />
@@ -109,7 +109,7 @@ function GroupCard({ group, sources }: { group: LibraryGroup; sources: LibrarySo
         )}
       </dl>
       {sources.length > 0 && (
-        <ul className="flex flex-col gap-2 border-t border-black/10 pt-2 dark:border-white/10">
+        <ul className="flex flex-col gap-2 border-t border-[#edf0f4] pt-3">
           {sources.map((s) => (
             <SourceRow key={s.code} source={s} />
           ))}
