@@ -1,122 +1,35 @@
 # Background job worker — no public port, so no [http_service] block. This
 # consumes the "skill-run" and "document-ingest" pg-boss queues (see
-# src/worker.ts) and is where i130-expedite-build's docx generation and the
-# upload malware scan + text extraction actually run (Python3/LibreOffice/
-# poppler-utils/ClamAV live in Dockerfile.worker, not the web app's image).
-#
-# `app` below is a placeholder — run `fly apps create <your-unique-name>`
-# first and replace this with whatever name you got.
+# src/worker.ts) and runs document processing and background jobs.
 app = "meritdesk-ai-worker"
 primary_region = "iad"
 
-# Graceful shutdown on deploys and restarts (src/worker.ts). Fly's default
-# stop signal is SIGINT and it kills the process 5 seconds later; the worker
-# handles both signals, but needs longer than 5 seconds to let an upload
-# scan finish and to record interrupted skill runs as failed (so they can be
-# retried at once). It waits up to 90 seconds (WORKER_SHUTDOWN_GRACE_SECONDS)
-# for every job in progress, in all slots, which must stay below
-# kill_timeout. Fly's maximum kill_timeout is 300 seconds, and it treats the
-# value as best effort.
-# These keys are top-level: they must stay above the first [table] header.
+# Graceful shutdown on deploys and restarts.
 kill_signal = "SIGTERM"
 kill_timeout = 120
-
-# Swap on the machine's disk: a cushion for the rare worst case in the
-# memory budget under [[vm]] below, so a short peak slows the machine down
-# instead of getting the worker killed for running out of memory.
 swap_size_mb = 1024
 
 [build]
   dockerfile = "Dockerfile.worker"
 
-# Concurrency (src/worker.ts; README "Worker concurrency"). These are the
-# code's defaults, set here so the sizing of [[vm]] below and the load it
-# was sized for are read together; change them together.
-# - SKILL_RUN_CONCURRENCY: skill runs in progress at once. Each one's tenant
-#   may use at most half of them, rounded up (2 of 4), unless
-#   SKILL_RUN_TENANT_CONCURRENCY says otherwise.
-# - DOCUMENT_INGEST_CONCURRENCY: upload scan + extraction jobs at once, on
-#   their own slots so uploads never wait behind skill runs; at most half per
-#   tenant (1 of 2) unless DOCUMENT_INGEST_TENANT_CONCURRENCY says otherwise.
-# - LIBREOFFICE_CONCURRENCY / MALWARE_SCAN_CONCURRENCY: conversions and
-#   clamscan runs at once across every job in the process.
-# - NODE_OPTIONS: the Node heap cap counted in the budget below, explicit so
-#   it does not depend on what V8 picks for the machine's memory.
-# - LIBRARY_DAILY_CONCURRENCY / LIBRARY_BACKFILL_CONCURRENCY: library daily
-#   runs and backfill chunks at once (each at most one per host); they spend
-#   most of their time waiting out the sites' crawl delays. 92 sources on
-#   about 36 hosts: four daily slots are meant to finish the daily runs
-#   inside the 01:00 to 05:00 window (check library_fetch_runs after the
-#   first days), and three backfill slots keep the long history walks (weeks
-#   on uscis.gov and foia.eoir.justice.gov) from holding up the rest.
-# - LIBRARY_PDF_CONCURRENCY / LIBRARY_PDF_MEMORY_MB: pdf.js text extractions
-#   at once, each in a worker thread whose heap is capped at this size.
-# Library backfill runs whenever LIBRARY_BACKFILL is not "paused" (docs/LIBRARY.md).
-# The per-tenant limits are counted per machine: with more than one worker
-# machine, each applies them.
+# Concurrency is deliberately capped for the 2-CPU organization limit.
 [env]
-  SKILL_RUN_CONCURRENCY = "4"
-  DOCUMENT_INGEST_CONCURRENCY = "2"
-  LIBREOFFICE_CONCURRENCY = "2"
+  SKILL_RUN_CONCURRENCY = "2"
+  DOCUMENT_INGEST_CONCURRENCY = "1"
+  LIBREOFFICE_CONCURRENCY = "1"
   MALWARE_SCAN_CONCURRENCY = "1"
   NODE_OPTIONS = "--max-old-space-size=1536"
-  LIBRARY_DAILY_CONCURRENCY = "4"
-  LIBRARY_BACKFILL_CONCURRENCY = "3"
+  LIBRARY_DAILY_CONCURRENCY = "2"
+  LIBRARY_BACKFILL_CONCURRENCY = "1"
   LIBRARY_PDF_CONCURRENCY = "1"
   LIBRARY_PDF_MEMORY_MB = "512"
 
-# Runs before this version's machines start, in a temporary machine with the
-# app's secrets: applies database migrations, then seeds any skill version
-# whose SKILL.md or references changed (package.json "release"). The
-# migrations run as the owner role (the MIGRATION_DATABASE_URL secret, on
-# this app only), the seed as the runtime role (DATABASE_URL; README
-# "Database roles"). If it
-# fails, the deploy stops and the running version is left as it is. Deploy
-# this app before the web app (fly.toml) so the schema is migrated before
-# either app runs code that needs it; migrations only add columns and
-# tables, which a version still running ignores.
+# Apply migrations and seed skills before starting this version's machines.
 [deploy]
   release_command = "npm run release"
 
-# No [http_service]/[[services]] — this app never scales to zero on
-# idle-connection grounds because it has no service to idle. After the first
-# deploy, run `fly scale count 1 -a <your-worker-app-name>` to guarantee
-# exactly one always-on machine (otherwise a fresh app can be created with
-# zero running machines, and queued skill runs would never get picked up).
+# No public service. Keep one always-on worker machine after first deploy.
 
-# Sized for the [env] settings above. Memory budget, in rough figures:
-# - Node: heap capped at 1.5 GB, usually a few hundred MB. Each skill run
-#   holds its matter documents and conversation and builds requests of up to
-#   32 MB; each upload job holds its file (up to 150 MB) outside the heap.
-# - clamscan: about 1 GB per scan, since it loads the whole signature
-#   database; one at a time (MALWARE_SCAN_CONCURRENCY).
-# - LibreOffice: a few hundred MB per conversion, two at a time.
-# - freshclam (daemon): small, but it can load a newly downloaded signature
-#   database to test it, about as much as a scan, a few times a day.
-# - The library: one pdf.js extraction at a time in its own thread (heap
-#   capped at 512 MB), and each of up to 7 library jobs holds one fetched
-#   file (PDFs up to LIBRARY_MAX_PDF_MB, 60 by default) and its text at a
-#   time; most hold a page of a few hundred KB. A few sources read larger
-#   files on purpose: the asylum procedures manual (86 MB PDF), Statutes at
-#   Large and Serial Set scans (up to 160 MB), the OMB paperwork inventory
-#   (a 104 MB XML, once at backfill), eCFR title files (up to 30 MB).
-# - The EOIR statistics load (monthly, when EOIR posts a release): a few
-#   hundred MB, mostly outside the heap, for tens of minutes.
-# A busy machine (4 runs, a scan, 2 conversions and a PDF extraction) peaks
-# around 3 GB.
-# The worst case, every one of those at its largest while freshclam tests
-# an update, goes past 4 GB; swap_size_mb above absorbs that.
-# CPU: Node's event loop (streaming, heartbeats) needs one; each conversion
-# and scan keeps one busy while it runs, so 4 CPUs cover 2 conversions and a
-# scan without starving the loop. Shared CPUs can be throttled under
-# sustained load; a performance size is the next step if conversions and
-# scans slow down under load.
-# Tradeoff: the previous 1-CPU, 2 GB machine ran one skill run at a time;
-# this one costs more per month (see `fly platform vm-sizes` and Fly's
-# pricing). To spend less, lower SKILL_RUN_CONCURRENCY and
-# LIBREOFFICE_CONCURRENCY together with the size; to run more at once, raise
-# memory first (each extra run adds its documents and conversation, and
-# more conversions add a few hundred MB each), then the Node heap cap.
 [[vm]]
-  size = "shared-cpu-4x"
+  size = "shared-cpu-2x"
   memory = "4gb"
