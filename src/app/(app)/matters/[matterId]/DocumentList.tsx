@@ -28,7 +28,7 @@ const SCAN_BADGES: Record<string, { label: string; tone: Tone }> = {
 };
 
 const buttonClass =
-  "rounded-md border border-black/20 px-2 py-0.5 text-xs font-medium text-black/70 dark:border-white/20 dark:text-white/70 disabled:opacity-50";
+  "rounded-lg border border-[#dce4ee] bg-white px-3 py-1.5 text-xs font-semibold text-[#536b8a] hover:bg-[#f7f9fc] disabled:opacity-50";
 
 // Fixed locale, so the server render and the browser agree on separators.
 const formatCount = (n: number) => n.toLocaleString("en-US");
@@ -129,8 +129,8 @@ export function DocumentList({ documents, canEdit }: { documents: DocumentListIt
               key={doc.id}
               className={`flex flex-col gap-1 rounded-md border p-2 ${
                 infected
-                  ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
-                  : "border-black/10 dark:border-white/10"
+                  ? "border-[#f0dada] bg-[#fff7f7]"
+                  : "border-[#edf0f4] bg-[#fbfcfe]"
               }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
