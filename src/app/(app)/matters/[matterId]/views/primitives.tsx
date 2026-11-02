@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 // Shared building blocks for the per-skill report views in this folder and
 // for GenericReportView. Presentation only: no data fetching, no state.
 
-const GREEN = "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300";
-const AMBER = "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
-const RED = "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300";
-const NEUTRAL = "bg-black/5 text-black/70 dark:bg-white/10 dark:text-white/70";
+const GREEN = "bg-[#edf6f0] text-[#477455]";
+const AMBER = "bg-[#fbf3e7] text-[#946b2d]";
+const RED = "bg-[#fbefef] text-[#a64e4e]";
+const NEUTRAL = "bg-[#f1f4f7] text-[#68788d]";
 
 export const toneClass = { green: GREEN, amber: AMBER, red: RED, neutral: NEUTRAL } as const;
 export type Tone = keyof typeof toneClass;
@@ -80,23 +80,23 @@ export function yesNo(value: boolean | null | undefined): string {
 
 export function Badge({ label, className, tone }: { label: string; className?: string; tone?: Tone }) {
   const color = className ?? (tone ? toneClass[tone] : badgeClassFor(label));
-  return <span className={`rounded px-2 py-0.5 text-xs font-medium ${color}`}>{humanize(label)}</span>;
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${color}`}>{humanize(label)}</span>;
 }
 
 /** Dimmed secondary text. */
 export function Muted({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <span className={`text-black/60 dark:text-white/60 ${className}`}>{children}</span>;
+  return <span className={`text-[#77869a] ${className}`}>{children}</span>;
 }
 
 /** Every report view's outer wrapper. */
 export function ReportBody({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-4 text-sm">{children}</div>;
+  return <div className="flex flex-col gap-4 text-sm leading-6 text-[#465b76]">{children}</div>;
 }
 
 export function Section({ title, children, className }: { title: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={className}>
-      <h4 className="mb-1 font-medium">{title}</h4>
+      <h4 className="mb-2 text-sm font-semibold text-[#293f5e]">{title}</h4>
       {children}
     </section>
   );
@@ -104,15 +104,15 @@ export function Section({ title, children, className }: { title: ReactNode; chil
 
 const calloutTone = {
   red: {
-    box: "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950",
-    title: "text-red-900 dark:text-red-100",
+    box: "border-[#f0dada] bg-[#fff5f5]",
+    title: "text-[#a64e4e]",
   },
   amber: {
-    box: "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950",
-    title: "text-amber-900 dark:text-amber-100",
+    box: "border-[#f0dfbd] bg-[#fff9ef]",
+    title: "text-[#8a642c]",
   },
   neutral: {
-    box: "border-black/10 dark:border-white/10",
+    box: "border-[#e4eaf1] bg-[#fbfcfe]",
     title: "",
   },
 } as const;
@@ -128,8 +128,8 @@ export function Callout({
   children: ReactNode;
 }) {
   return (
-    <section className={`rounded-md border p-3 ${calloutTone[tone].box}`}>
-      <h4 className={`mb-1 font-medium ${calloutTone[tone].title}`}>{title}</h4>
+    <section className={`rounded-xl border p-4 ${calloutTone[tone].box}`}>
+      <h4 className={`mb-2 text-sm font-semibold ${calloutTone[tone].title}`}>{title}</h4>
       {children}
     </section>
   );
