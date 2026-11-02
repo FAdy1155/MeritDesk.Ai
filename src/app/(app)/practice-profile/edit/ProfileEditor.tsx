@@ -27,13 +27,13 @@ import {
 } from "@/lib/practice-profile/checks";
 import { saveDraftAction, proposeDraftAction } from "../actions";
 
-const sectionClass = "flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10";
-const labelClass = "text-sm font-medium";
-const hintClass = "text-xs text-black/60 dark:text-white/60";
+const sectionClass = "flex flex-col gap-4 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6";
+const labelClass = "text-xs font-semibold text-[#53657d]";
+const hintClass = "text-xs leading-5 text-[#8290a4]";
 const inputClass =
-  "rounded-md border border-black/15 bg-transparent px-3 py-1.5 text-sm dark:border-white/20";
+  "mt-1.5 w-full rounded-xl border border-[#dce4ee] bg-white px-3.5 py-2.5 text-sm text-[#263b57] outline-none focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7]";
 const smallButtonClass =
-  "self-start rounded-md border border-black/15 px-3 py-1 text-xs font-medium dark:border-white/20";
+  "self-start rounded-xl border border-[#dce4ee] bg-white px-3.5 py-2 text-xs font-semibold text-[#536b8a] hover:bg-[#f7f9fc]";
 const removeButtonClass = "text-xs text-red-700 underline dark:text-red-300";
 
 // The template's own guidance for a field, where it has some.
