@@ -15,8 +15,8 @@ import { openBillingPortalAction, startCheckoutAction } from "./actions";
 // An action's refusal arrives as ?error=<code> and is shown as fixed text
 // (src/lib/billing/errors.ts), never as text from the URL.
 
-const buttonClass = "rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black";
-const secondaryButtonClass = "rounded-md border border-black/15 px-4 py-2 text-sm font-medium dark:border-white/20";
+const buttonClass = "rounded-xl bg-[#17345f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#244a7c] disabled:opacity-50";
+const secondaryButtonClass = "rounded-xl border border-[#dce4ee] bg-white px-5 py-3 text-sm font-semibold text-[#536b8a] hover:bg-[#f7f9fc]";
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -72,10 +72,11 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
   const status = statusLines(entitlement, memberCount, monthlyCents);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">Billing</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
+      <header className="border-b border-[#e6ebf1] pb-6">
+        <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">ACCOUNT & SUBSCRIPTION</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Billing</h1>
+        <p className="text-sm leading-6 text-[#718198]">
           {PRODUCT_NAME} is free for a firm&apos;s first 30 days (once per person), then {formatUsd(seatPriceCents)} per user per
           month. The subscription renews automatically, and a receipt comes by email after every payment. Payment is
           handled by Stripe on this site, never inside Claude.
@@ -83,25 +84,25 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
       </div>
 
       {checkout === "success" && (
-        <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100">
+        <div className="rounded-2xl border border-[#d8eadf] bg-[#f1f8f3] p-4 text-sm leading-6 text-[#477455]">
           Thank you. Stripe confirmed the subscription; this page shows it as soon as Stripe&apos;s confirmation reaches
           the app, usually within a minute. A confirmation email is on its way.
         </div>
       )}
       {checkout === "canceled" && (
-        <div className="rounded-lg border border-black/10 p-4 text-sm dark:border-white/10">Checkout was canceled. Nothing was charged.</div>
+        <div className="rounded-2xl border border-[#e4eaf1] bg-white p-4 text-sm text-[#64758c]">Checkout was canceled. Nothing was charged.</div>
       )}
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+        <div className="rounded-2xl border border-[#f0dada] bg-[#fff5f5] p-4 text-sm leading-6 text-[#a64e4e]">
           {error}
         </div>
       )}
 
-      <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10" aria-labelledby="billing-status">
+      <section className="flex flex-col gap-4 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6" aria-labelledby="billing-status">
         <h2 id="billing-status" className="font-semibold">
           {status.title}
         </h2>
-        <p className="text-sm text-black/70 dark:text-white/70">{status.detail}</p>
+        <p className="text-sm leading-6 text-[#718198]">{status.detail}</p>
         <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-black/60 dark:text-white/60">Members (seats)</dt>
@@ -124,7 +125,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
             <dd>{entitlement.trialEndsAt ? formatDay(entitlement.trialEndsAt) : "none (already used by the firm's creator)"}</dd>
           </div>
         </dl>
-        <p className="text-xs text-black/60 dark:text-white/60">
+        <p className="text-xs leading-5 text-[#8290a4]">
           Seats follow the firm&apos;s members: inviting a member adds a seat and removing one removes it, prorated by
           Stripe on the next invoice. Members are invited and removed in the organization settings (the firm menu at the
           top); their roles are set on the Firm page.
@@ -172,7 +173,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
       </section>
 
       <p className="text-sm text-black/60 dark:text-white/60">
-        The <Link href="/pricing" className="underline">pricing page</Link> has the details; the{" "}
+        The <Link href="/pricing" className="font-semibold text-[#416da5] underline decoration-[#c4d2e4] underline-offset-2">pricing page</Link> has the details; the{" "}
         <Link href="/terms" className="underline">terms</Link> and <Link href="/privacy" className="underline">privacy</Link>{" "}
         pages apply.
       </p>
