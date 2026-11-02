@@ -7,130 +7,55 @@ import { CONNECTOR_SETTINGS_ROLES, getCurrentTenant, hasRole } from "@/lib/tenan
 import { connectorResourceUrl, resolveConnectorOrigin } from "@/services/connector/config";
 import { CopyField } from "./CopyField";
 
-// "Add MeritDesk.AI to Claude": the page a new firm lands on and the one
-// the welcome email, the landing page, the Firm page and the nav point to.
-// The connector address with a copy button, the steps for Claude (Free, Pro
-// and Max plans; Team and Enterprise plans) and for ChatGPT, and what
-// happens next (the free month, then subscribing on this site). The
-// connector's own switches stay on the Firm page (docs/CONNECTORS.md).
-
-const stepsClass = "list-decimal space-y-1 pl-5 text-sm text-black/80 dark:text-white/80";
-const sectionClass = "flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10";
+const sectionClass = "rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-7";
+const stepsClass = "mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[#64758c] marker:font-semibold marker:text-[#5578a8]";
 
 export default async function ConnectPage() {
   const { tenant, membership } = await getCurrentTenant();
   const [entitlement, settings] = await Promise.all([getEntitlement(tenant.id), getConnectorSettings(tenant.id)]);
-  // Null in production until CONNECTOR_PUBLIC_ORIGIN is set (the connector itself answers 500 until then).
   const { origin } = resolveConnectorOrigin(await headers());
   const serverUrl = origin ? connectorResourceUrl(origin) : null;
   const canManageConnector = hasRole(membership, CONNECTOR_SETTINGS_ROLES);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">Add {PRODUCT_NAME} to Claude</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
-          {PRODUCT_NAME} works inside Claude as a connector. Each member of {tenant.name} adds it once with their own
-          sign-in, and the tools appear in their chats: the legal library for everyone, and the firm&apos;s matters,
-          documents and skills once the firm&apos;s owner turns case work on.
-        </p>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
+      <header className="border-b border-[#e6ebf1] pb-6">
+        <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">AI WORKFLOW</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">Connect your AI assistant</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7b899d]">{PRODUCT_NAME} works with Claude and ChatGPT through a secure MCP connector. Each member of {tenant.name} connects with their own sign-in. The legal library is available to everyone; the firm's matters, documents and skills are available when the owner enables case-work access.</p>
+      </header>
+
+      <section className="overflow-hidden rounded-2xl border border-[#dce5f0] bg-[linear-gradient(120deg,#f8fafd,#eef3fa)] p-5 sm:p-7" aria-labelledby="connector-address">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#7189aa]">STEP 01 · START HERE</p><h2 id="connector-address" className="mt-2 text-lg font-semibold text-[#263b57]">Your firm's connector address</h2></div><span className="rounded-full border border-[#dce8df] bg-white px-3 py-1 text-[10px] font-medium text-[#477455]">Secure sign-in</span></div>
+        <div className="mt-5">{serverUrl ? <CopyField value={serverUrl} label="Connector address" /> : <p className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">Not available yet: the server's public address (CONNECTOR_PUBLIC_ORIGIN) is not configured. Ask the platform's operator.</p>}</div>
+        <p className="mt-3 text-xs leading-5 text-[#7d8ba0]">Copy this address into the custom connector setup in Claude or ChatGPT. Leave OAuth client ID and client secret fields empty; sign-in is handled by {PRODUCT_NAME}.</p>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className={sectionClass} aria-labelledby="claude-personal">
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f2f6] text-sm font-semibold text-[#33445e]">C</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">PERSONAL PLANS</p><h2 id="claude-personal" className="text-base font-semibold text-[#293f5c]">Claude Free, Pro or Max</h2></div></div>
+          <ol className={stepsClass}><li>Open Claude at claude.ai or in the desktop app, then go to Settings → Connectors.</li><li>Choose Add custom connector, name it {PRODUCT_NAME}, and paste the address above.</li><li>Choose Connect. Sign in to {PRODUCT_NAME}, select {tenant.name} on the consent screen and allow access.</li><li>In a chat, open the + menu → Connectors and turn {PRODUCT_NAME} on. Ask Claude to search the library, list matters or run a skill.</li></ol>
+        </section>
+        <section className={sectionClass} aria-labelledby="claude-team">
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f2f6] text-sm font-semibold text-[#33445e]">C</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">TEAM WORKSPACES</p><h2 id="claude-team" className="text-base font-semibold text-[#293f5c]">Claude Team or Enterprise</h2></div></div>
+          <ol className={stepsClass}><li>A Claude organization Owner adds the connector once: Organization settings → Connectors → Add → Custom → Web.</li><li>Each member connects under Customize → Connectors, signs in to {PRODUCT_NAME}, selects {tenant.name} and allows access.</li><li>In a chat, turn the connector on from the + menu under Connectors.</li></ol>
+        </section>
+        <section className={sectionClass} aria-labelledby="chatgpt">
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eaf3ef] text-sm font-semibold text-[#39765e]">AI</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">CUSTOM MCP CONNECTOR</p><h2 id="chatgpt" className="text-base font-semibold text-[#293f5c]">ChatGPT</h2></div></div>
+          <ol className={stepsClass}><li>Open ChatGPT settings and find the connector or custom MCP server option. A Business or Enterprise workspace admin may first need to allow custom MCP servers.</li><li>Add a custom server, paste the address above and choose OAuth authentication.</li><li>Review the permissions, continue, then sign in to {PRODUCT_NAME}, select {tenant.name} and allow access.</li><li>In a chat, select the connector from the tools menu or with @. Deep research can use its search and fetch tools.</li></ol>
+        </section>
+        <section className={sectionClass} aria-labelledby="what-next">
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf2fa] text-sm font-semibold text-[#41699f]">✓</span><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#8a98aa]">AFTER CONNECTING</p><h2 id="what-next" className="text-base font-semibold text-[#293f5c]">A few things to know</h2></div></div>
+          <ul className="mt-4 space-y-3 text-sm leading-6 text-[#64758c]">
+            <li className="flex gap-2"><span className="text-[#5c7fae]">•</span><span>{entitlement.state === "trialing" ? tenant.name + "'s free month runs until " + (entitlement.trialEndsAt ? formatDay(entitlement.trialEndsAt) : "its last day") + ". Everything is on during it." : entitlement.state === "active" ? tenant.name + " is subscribed; the subscription renews automatically and receipts come by email." : tenant.name + "'s free month has ended; subscribing on the Billing page unlocks the app and connector."}</span></li>
+            <li className="flex gap-2"><span className="text-[#5c7fae]">•</span><span>After the free month it is $20 per user per month. Billing happens on this site, never inside Claude or ChatGPT. Manage it on the <Link href="/billing" className="font-semibold text-[#416da5] hover:underline">Billing page</Link>.</span></li>
+            <li className="flex gap-2"><span className="text-[#5c7fae]">•</span><span>Case-work tools are currently <strong className="font-semibold text-[#344b66]">{settings.caseWorkActive ? "on" : "off"}</strong> for {tenant.name}. {canManageConnector ? "You can change this on the Firm page after reading the disclosure." : "The firm's owner controls this setting on the Firm page."} The legal library tools are always on.</span></li>
+            <li className="flex gap-2"><span className="text-[#5c7fae]">•</span><span>A new Claude or ChatGPT client may initially see library tools only until the platform recognizes it. The <Link href="/firm" className="font-semibold text-[#416da5] hover:underline">Firm page</Link> explains this and lists unrecognized clients.</span></li>
+            <li className="flex gap-2"><span className="text-[#5c7fae]">•</span><span>Before using real matters, add your letterhead and attorneys on the Firm page, complete the practice profile and invite your staff.</span></li>
+          </ul>
+        </section>
       </div>
-
-      <section className={sectionClass} aria-labelledby="connector-address">
-        <h2 id="connector-address" className="font-semibold">
-          1. The connector address
-        </h2>
-        {serverUrl ? (
-          <CopyField value={serverUrl} label="Connector address" />
-        ) : (
-          <p className="text-sm text-red-600">
-            Not available yet: the server&apos;s public address (CONNECTOR_PUBLIC_ORIGIN) is not configured. Ask the
-            platform&apos;s operator.
-          </p>
-        )}
-        <p className="text-xs text-black/60 dark:text-white/60">
-          Paste this address where Claude or ChatGPT asks for the connector or server URL. Leave any OAuth client ID
-          and secret fields empty: Claude registers itself with the app&apos;s sign-in.
-        </p>
-      </section>
-
-      <section className={sectionClass} aria-labelledby="claude-personal">
-        <h2 id="claude-personal" className="font-semibold">
-          2. In Claude (Free, Pro or Max plan)
-        </h2>
-        <ol className={stepsClass}>
-          <li>Open Claude (claude.ai or the desktop or mobile app), then Settings, then Connectors.</li>
-          <li>Choose Add custom connector, give it a name such as {PRODUCT_NAME}, and paste the address above.</li>
-          <li>Choose Connect. A sign-in page for {PRODUCT_NAME} opens: sign in with your app account, choose {tenant.name} on the consent screen, and allow access.</li>
-          <li>In a chat, open the + menu, then Connectors, and turn {PRODUCT_NAME} on. Ask Claude to search the library, list the firm&apos;s matters, or run a skill on one.</li>
-        </ol>
-      </section>
-
-      <section className={sectionClass} aria-labelledby="claude-team">
-        <h2 id="claude-team" className="font-semibold">
-          In Claude (Team or Enterprise plan)
-        </h2>
-        <ol className={stepsClass}>
-          <li>A Claude organization Owner adds the connector once: Organization settings, then Connectors, then Add, then Custom, then Web, with the address above.</li>
-          <li>Each member then connects it under Customize, then Connectors: sign in to {PRODUCT_NAME}, choose {tenant.name}, allow access.</li>
-          <li>In a chat, turn the connector on from the + menu under Connectors.</li>
-        </ol>
-      </section>
-
-      <section className={sectionClass} aria-labelledby="chatgpt">
-        <h2 id="chatgpt" className="font-semibold">
-          In ChatGPT
-        </h2>
-        <ol className={stepsClass}>
-          <li>Open Plugins (chatgpt.com/plugins), select the plus button, then Add custom MCP server. On a Business or Enterprise workspace an admin may first have to allow custom MCP servers in the workspace settings.</li>
-          <li>Enter a name, paste the address above as the server URL, and choose OAuth as the authentication.</li>
-          <li>Review the warning and continue, then connect: sign in to {PRODUCT_NAME}, choose {tenant.name}, allow access.</li>
-          <li>In a chat, pick the connector from the tools menu or with @. Deep research can use its search and fetch tools.</li>
-        </ol>
-      </section>
-
-      <section className={sectionClass} aria-labelledby="what-next">
-        <h2 id="what-next" className="font-semibold">
-          3. What happens next
-        </h2>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-black/80 dark:text-white/80">
-          <li>
-            {entitlement.state === "trialing"
-              ? `${tenant.name}'s free month runs until ${entitlement.trialEndsAt ? formatDay(entitlement.trialEndsAt) : "its last day"}. Everything is on during it.`
-              : entitlement.state === "active"
-                ? `${tenant.name} is subscribed; the subscription renews automatically and receipts come by email.`
-                : `${tenant.name}'s free month has ended; subscribing on the Billing page unlocks the app and the connector.`}
-          </li>
-          <li>
-            After the free month it is $20 per user per month, and you subscribe on this site, on the{" "}
-            <Link href="/billing" className="underline">
-              Billing page
-            </Link>
-            . Payment never happens inside Claude; the subscription renews automatically and a receipt comes by email
-            after each payment.
-          </li>
-          <li>
-            The case-work tools (matters, documents lists, skill runs, legal updates) are{" "}
-            {settings.caseWorkActive ? "on" : "off"} for {tenant.name}.{" "}
-            {canManageConnector
-              ? "You turn them on or off on the Firm page, after reading the disclosure there."
-              : "The firm's owner turns them on from the Firm page, after reading the disclosure there."}{" "}
-            The library tools are always on.
-          </li>
-          <li>
-            The first connection from a new Claude or ChatGPT client may show the library tools only until the
-            platform recognizes that client; the{" "}
-            <Link href="/firm" className="underline">
-              Firm page
-            </Link>{" "}
-            explains and lists it.
-          </li>
-          <li>
-            Before the first real matter: enter the firm&apos;s letterhead and attorneys on the Firm page, fill in the
-            practice profile, and invite your staff from the firm menu at the top.
-          </li>
-        </ul>
-      </section>
+      <aside className="rounded-2xl border border-[#e4eaf1] bg-white p-5 sm:p-6"><h2 className="text-sm font-semibold text-[#30445f]">Understand case-work access</h2><p className="mt-2 text-sm leading-6 text-[#7b899d]">When case-work tools are enabled, information returned from a matter becomes part of the conversation in your AI provider and is subject to that provider's terms. Your firm controls whether these tools are enabled. Review the disclosure on the <Link href="/firm" className="font-semibold text-[#416da5] hover:underline">Firm settings page</Link> before turning them on. Every case-work connector call is recorded in the firm's audit log.</p></aside>
     </div>
   );
 }
