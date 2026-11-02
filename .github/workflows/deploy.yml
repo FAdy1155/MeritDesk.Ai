@@ -45,7 +45,17 @@ jobs:
       - name: Verify organization token reaches the GitHub runner
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl auth whoami --json
+        shell: bash
+        run: |
+          case "$FLY_API_TOKEN" in
+            "FlyV1 "*) echo "Token format: FlyV1 prefix present" ;;
+            *) echo "Token format: unexpected prefix"; exit 1 ;;
+          esac
+          echo "Token length before normalization: ${#FLY_API_TOKEN}"
+          FLY_API_TOKEN="$(printf '%s' "$FLY_API_TOKEN" | tr -d '\\r\\n')"
+          export FLY_API_TOKEN
+          echo "Token length after normalization: ${#FLY_API_TOKEN}"
+          flyctl auth whoami --json
 
       - name: Deploy worker and run database migrations
         env:
