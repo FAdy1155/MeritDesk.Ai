@@ -12,7 +12,7 @@ export function PublicShell({ children, signedIn }: { children: React.ReactNode;
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#17345f] text-sm font-bold tracking-tight text-white shadow-sm">M</span>
             <span className="text-[15px] font-semibold tracking-[-0.03em] text-[#192d49]">{PRODUCT_NAME}</span>
           </Link>
-          <nav aria-label="Main navigation" className="flex items-center gap-3 sm:gap-7">
+          <nav aria-label="Main navigation" className="flex items-center gap-3 sm:gap-6">
             <Link href="/pricing" className="text-sm font-medium text-[#697991] transition hover:text-[#1b3458]">
               Pricing
             </Link>
