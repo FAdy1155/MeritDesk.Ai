@@ -25,7 +25,7 @@ const ROLE_HELP: Record<MemberAppRole, string> = {
 };
 
 const selectClass =
-  "rounded-md border border-black/15 bg-transparent px-2 py-1 text-sm disabled:opacity-50 dark:border-white/20";
+  "rounded-xl border border-[#dce4ee] bg-white px-3 py-2 text-sm text-[#344b66] disabled:opacity-50";
 
 export function MembersList({
   members,
@@ -91,7 +91,7 @@ function MemberRow({ member, canManage, isCurrentUser }: { member: FirmMemberVie
 
   const roleSelectId = `member-role-${member.userId}`;
   return (
-    <li className="flex flex-col gap-1 rounded-md border border-black/10 p-3 dark:border-white/10">
+    <li className="flex flex-col gap-2 rounded-xl border border-[#edf0f4] bg-[#fbfcfe] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-col">
           <span className="font-medium">
