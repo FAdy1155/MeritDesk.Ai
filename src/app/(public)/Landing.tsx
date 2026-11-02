@@ -156,9 +156,7 @@ export function Landing() {
               Immigration legal work, organized around your firm.
             </h1>
             <p className="mt-7 max-w-xl text-base leading-8 text-[#65748a] sm:text-lg">
-              A connector that immigration attorneys and paralegals add to Claude, backed by a web app that holds your
-              firm&apos;s matters and documents, 26 immigration skills, and a library of official immigration-law sources.
-              Ask Claude about a matter, run a skill on it, or cite the law from the library, all from the chat.
+              MeritDesk.AI gives immigration law firms one place to organize clients, matters and documents, work with 26 purpose-built immigration skills, and search a library of official legal sources. Connect Claude or ChatGPT to bring those firm resources into your AI conversations—with firm-controlled access and an audit trail for case-work activity.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link href="/sign-up" className="group inline-flex items-center gap-3 rounded-xl bg-[#17345f] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_25px_-12px_rgba(23,52,95,0.7)] transition hover:-translate-y-0.5 hover:bg-[#214779]">
