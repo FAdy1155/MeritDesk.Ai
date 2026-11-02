@@ -1,5 +1,5 @@
 # Deploy worker first so database migrations complete before the web app is released.
-# Fly performs remote builds, so the GitHub runner needs no Docker registry login.
+# Each app uses its own app-scoped Fly deploy token.
 name: Deploy to Fly.io
 
 on:
@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       WORKER_APP: ${{ vars.FLY_WORKER_APP }}
       WEB_APP: ${{ vars.FLY_WEB_APP }}
       CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -28,11 +27,13 @@ jobs:
 
       - name: Check deployment settings
         env:
-          FLY_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          WORKER_TOKEN: ${{ secrets.FLY_WORKER_DEPLOY_TOKEN }}
+          WEB_TOKEN: ${{ secrets.FLY_WEB_DEPLOY_TOKEN }}
         shell: bash
         run: |
           missing=""
-          [ -n "$FLY_TOKEN" ] || missing="$missing FLY_API_TOKEN(secret)"
+          [ -n "$WORKER_TOKEN" ] || missing="$missing FLY_WORKER_DEPLOY_TOKEN(secret)"
+          [ -n "$WEB_TOKEN" ] || missing="$missing FLY_WEB_DEPLOY_TOKEN(secret)"
           [ -n "$WORKER_APP" ] || missing="$missing FLY_WORKER_APP"
           [ -n "$WEB_APP" ] || missing="$missing FLY_WEB_APP"
           [ -n "$CLERK_PUBLISHABLE_KEY" ] || missing="$missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
@@ -42,10 +43,14 @@ jobs:
           fi
 
       - name: Deploy worker and run database migrations
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_WORKER_DEPLOY_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.worker.toml --app "$WORKER_APP"
 
       - name: Deploy web app
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_WEB_DEPLOY_TOKEN }}
         run: |
           flyctl deploy --remote-only --config fly.toml --app "$WEB_APP" \
             --build-arg "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY"
