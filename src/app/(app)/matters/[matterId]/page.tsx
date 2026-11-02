@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EDITOR_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
 import { getMatter, listMatterParties, listClients } from "@/lib/matters/service";
@@ -30,7 +31,7 @@ async function addPartyFromForm(formData: FormData) {
 }
 
 const inputClass =
-  "rounded-md border border-black/15 bg-transparent px-2 py-1 text-xs dark:border-white/20";
+  "rounded-xl border border-[#dce4ee] bg-white px-3 py-2.5 text-sm text-[#263b57] outline-none focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7]";
 
 const partyRoleLabel = (role: string) => role.charAt(0).toUpperCase() + role.slice(1);
 
@@ -101,11 +102,13 @@ export default async function MatterDetailPage({
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold">{caseTypeLabel(matter.caseType)}</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">{summary.join(" | ")}</p>
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
+      <header className="border-b border-[#e6ebf1] pb-6">
+        <Link href="/matters" className="text-xs font-semibold text-[#5278a8] hover:text-[#244d83]">← All matters</Link>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-[.18em] text-[#7890b2]">CASE WORKSPACE</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#1b2e49]">{caseTypeLabel(matter.caseType)}</h1>
+        <div className="mt-3 flex flex-wrap gap-2">{summary.map((item) => <span key={item} className="rounded-full border border-[#e4eaf1] bg-white px-3 py-1.5 text-xs font-medium text-[#63758d]">{item}</span>)}</div>
+      </header>
 
       <MatterDetails
         matterId={matterId}
@@ -121,9 +124,9 @@ export default async function MatterDetailPage({
         }}
       />
 
-      <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10">
-        <h2 className="font-medium">Parties</h2>
-        <ul className="flex flex-col gap-1 text-sm">
+      <section className="flex flex-col gap-4 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6">
+        <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#91a0b4]">PEOPLE</p><h2 className="mt-1 text-base font-semibold text-[#293f5e]">Parties</h2></div>
+        <ul className="flex flex-col gap-2 text-sm">
           {parties.map((p) => (
             <li key={p.id}>
               {p.client.fullName} <span className="text-black/60 dark:text-white/60">({partyRoleLabel(p.role)})</span>
@@ -157,8 +160,8 @@ export default async function MatterDetailPage({
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10">
-        <h2 className="font-medium">Documents</h2>
-        <p className="text-xs text-black/50 dark:text-white/50">
+        <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#91a0b4]">CASE FILES</p><h2 className="mt-1 text-base font-semibold text-[#293f5e]">Documents</h2></div>
+        <p className="text-xs leading-6 text-[#8290a4]">
           Each upload is scanned for malware and its text extracted in the background. Only a file that scanned clean can be
           downloaded or read by a skill run: PDFs and images directly, Word and text files through their extracted text.
         </p>
