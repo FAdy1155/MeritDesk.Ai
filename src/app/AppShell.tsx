@@ -38,13 +38,13 @@ export async function AppShell({ children, enforceLock }: { children: React.Reac
     <div className="min-h-screen flex-1 bg-[#f5f7fb] text-[#24344d]">
       {ready ? (
         <div className="flex min-h-screen">
-          <AppNavigation variant="sidebar" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />  </aside>
+          <AppNavigation variant="sidebar" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-30 flex min-h-[68px] items-center justify-between gap-4 border-b border-[#e8edf4] bg-white/95 px-4 backdrop-blur-xl sm:px-7">
               <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#9aa7b9]">Firm workspace</p><p className="truncate text-sm font-semibold text-[#243a5b]">{state.firmName}</p></div>
               <div className="flex shrink-0 items-center gap-3"><OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/connect" afterSelectOrganizationUrl="/" /><span className="h-7 w-px bg-[#e8edf4]" /><UserButton /></div>
             </header>
-            <AppNavigation variant="mobile" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />      </nav>
+            <AppNavigation variant="mobile" unreviewedLegalUpdates={state.unreviewedLegalUpdates} />
             <EntitlementBanner entitlement={state.entitlement} canBill={state.canBill} />
             <main className="w-full flex-1 px-4 py-7 sm:px-7 sm:py-9 lg:px-10">
               <div className="mx-auto w-full max-w-[1440px]">
