@@ -83,11 +83,11 @@ const kindLabel: Record<SkillKind, string> = {
 };
 
 const primaryButton =
-  "rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-black disabled:opacity-50";
+  "rounded-xl bg-[#17345f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#244a7c] disabled:opacity-50";
 const secondaryButton =
-  "rounded-md border border-black/20 px-3 py-1.5 text-xs font-medium text-black/70 dark:border-white/20 dark:text-white/70 disabled:opacity-50";
-const mutedText = "text-black/50 dark:text-white/50";
-const linkClass = "underline";
+  "rounded-xl border border-[#dce4ee] bg-white px-4 py-2.5 text-sm font-semibold text-[#536b8a] hover:bg-[#f7f9fc] disabled:opacity-50";
+const mutedText = "text-[#8290a4]";
+const linkClass = "font-semibold text-[#416da5] underline decoration-[#c4d2e4] underline-offset-2 hover:text-[#244d83]";
 
 // Fixed locale, so the server render and the browser agree on separators.
 const formatCount = (n: number) => n.toLocaleString("en-US");
@@ -323,7 +323,7 @@ export function SkillRunPanel({
         <button
           type="button"
           onClick={() => selectSkill(skill.name)}
-          className="flex h-full w-full flex-col gap-1 rounded-md border border-black/10 p-2 text-left hover:border-black/30 dark:border-white/10 dark:hover:border-white/30"
+          className="flex h-full w-full flex-col gap-2 rounded-xl border border-[#e4eaf1] bg-white p-4 text-left transition hover:border-[#c5d5e8] hover:bg-[#fbfcfe]"
         >
           <span className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">{skill.label}</span>
@@ -370,7 +370,7 @@ export function SkillRunPanel({
           <details
             open={otherOpen}
             onToggle={(e) => setOtherOpen(e.currentTarget.open)}
-            className="rounded-md border border-black/10 p-2 dark:border-white/10"
+            className="rounded-xl border border-[#e4eaf1] bg-[#fbfcfe] p-3"
           >
             <summary className="cursor-pointer text-sm font-medium">
               Other skills ({otherSkills.length}), not built for {matterTypeLabel} matters
@@ -402,7 +402,7 @@ export function SkillRunPanel({
     return (
       <form
         aria-labelledby={ids.heading}
-        className="flex flex-col gap-3 rounded-md border border-black/15 p-3 dark:border-white/15"
+        className="flex flex-col gap-4 rounded-2xl border border-[#dce5f0] bg-[#f8fafd] p-5 sm:p-6"
         onSubmit={(e) => {
           e.preventDefault();
           if (!noteTooLong) handleRun(skill);
@@ -425,7 +425,7 @@ export function SkillRunPanel({
         <p className="text-sm">{skill.description}</p>
 
         {similar.length > 0 && (
-          <div className="rounded-md bg-black/5 p-2 text-xs dark:bg-white/10">
+          <div className="rounded-xl border border-[#e7edf5] bg-white p-3 text-xs text-[#64758c]">
             <p className="mb-1 font-medium">Similar skill{similar.length === 1 ? "" : "s"}, to compare before you run:</p>
             <ul className="flex flex-col gap-2">
               {similar.map((other) => (
@@ -471,7 +471,7 @@ export function SkillRunPanel({
               aria-describedby={`${ids.noteHelp} ${ids.noteCount}`}
               aria-invalid={noteTooLong}
               rows={6}
-              className="resize-y rounded-md border border-black/15 bg-transparent px-2 py-1.5 text-sm dark:border-white/20"
+              className="resize-y rounded-xl border border-[#dce4ee] bg-white px-3.5 py-3 text-sm text-[#263b57] outline-none focus:border-[#7899c4] focus:ring-4 focus:ring-[#dce8f7]"
             />
             <p id={ids.noteCount} className={`text-xs ${noteTooLong ? "text-red-700 dark:text-red-400" : mutedText}`}>
               {formatCount(note.trim().length)} of {formatCount(MAX_ATTORNEY_NOTE_CHARS)} characters
@@ -500,7 +500,7 @@ export function SkillRunPanel({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-black/10 p-4 dark:border-white/10">
+    <section className="flex flex-col gap-4 rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-6">
       <h2 className="font-medium">Skill runs</h2>
 
       {!canRun && (
@@ -588,13 +588,13 @@ function RunRow({
   const finishedLabel = run.status === "failed" ? "Failed" : "Completed";
 
   return (
-    <li className="rounded-md border border-black/10 dark:border-white/10">
+    <li className="rounded-xl border border-[#e4eaf1] bg-white">
       <button
         id={toggleId}
         type="button"
         aria-expanded={expanded}
         aria-controls={expanded ? bodyId : undefined}
-        className="flex w-full flex-col gap-1 px-3 py-2 text-left text-sm sm:flex-row sm:items-center sm:justify-between"
+        className="flex w-full flex-col gap-2 rounded-xl px-4 py-3 text-left text-sm transition hover:bg-[#f8fafd] sm:flex-row sm:items-center sm:justify-between"
         onClick={onToggle}
       >
         <span className="flex flex-wrap items-center gap-2">
@@ -612,7 +612,7 @@ function RunRow({
       </button>
 
       {expanded && (
-        <div id={bodyId} className="flex flex-col gap-3 border-t border-black/10 p-3 dark:border-white/10">
+        <div id={bodyId} className="flex flex-col gap-3 border-t border-[#edf0f4] bg-[#fbfcfe] p-4">
           <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
             <div>
               <dt className={`inline ${mutedText}`}>Requested: </dt>
@@ -673,7 +673,7 @@ function RunRow({
           </dl>
 
           {run.attorneyNote ? (
-            <details className="rounded-md border border-black/10 p-2 text-xs dark:border-white/10">
+            <details className="rounded-xl border border-[#e4eaf1] bg-white p-3 text-xs">
               <summary className="cursor-pointer font-medium">Case note used</summary>
               <p className="mt-2 whitespace-pre-wrap break-words">{run.attorneyNote}</p>
             </details>
