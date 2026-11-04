@@ -16,7 +16,7 @@ const QUEUES: Queue[] = [
 ];
 
 // pg-boss needs a plain Postgres-wire connection for its own schema/migrations
-// and internal maintenance queries; Neon's *pooled* (PgBouncer transaction-mode)
+// and internal maintenance queries; Neon's pooled (PgBouncer transaction-mode)
 // connection string used for DATABASE_URL is not safe for that, so this reads a
 // separate, unpooled connection string. See README "Database roles".
 if (!process.env.QUEUE_DATABASE_URL) {
@@ -48,7 +48,10 @@ export async function getBoss(): Promise<PgBoss> {
 }
 
 async function startBoss(): Promise<PgBoss> {
-  const boss = new PgBoss({ connectionString: process.env.QUEUE_DATABASE_URL });
+  const boss = new PgBoss({
+    connectionString: process.env.QUEUE_DATABASE_URL,
+    createSchema: false,
+  });
   boss.on("error", (err: Error) => console.error(`pg-boss error: ${describeErrorForLog(err)}`));
   try {
     await boss.start();
