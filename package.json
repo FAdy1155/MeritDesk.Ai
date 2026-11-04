@@ -20,7 +20,8 @@
     "eoir-stats:load": "tsx --conditions=react-server src/services/library/adapters/eoir-statistics/cli.ts",
     "eoir-stats:check": "tsx --conditions=react-server src/services/library/adapters/eoir-statistics/check.ts",
     "stripe:setup": "tsx src/lib/billing/cli/stripe-setup.ts",
-    "billing:comp": "tsx --conditions=react-server src/lib/billing/cli/complimentary.ts"
+    "billing:comp": "tsx --conditions=react-server src/lib/billing/cli/complimentary.ts",
+    "env:check": "node scripts/check-env-example.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

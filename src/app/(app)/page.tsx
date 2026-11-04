@@ -1,3 +1,5 @@
+
+import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { formatDay } from "@/lib/billing/config";
 import { getEntitlement } from "@/lib/billing/entitlement";
@@ -5,6 +7,12 @@ import { getConnectorSettings } from "@/lib/connector/settings";
 import { getCurrentTenant } from "@/lib/tenant";
 
 export default async function DashboardPage() {
+  const { userId } = await auth();
+
+  // The public landing page is rendered by the app layout for signed-out visitors.
+  // Do not execute dashboard tenant or billing queries without an authenticated user.
+  if (!userId) return null;
+
   const { tenant } = await getCurrentTenant();
   const [entitlement, connector] = await Promise.all([
     getEntitlement(tenant.id),
@@ -41,7 +49,7 @@ export default async function DashboardPage() {
         <article className="rounded-2xl border border-[#e6ebf2] bg-white p-5">
           <p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#91a0b4]">02 · FIRM ACCESS</p>
           <h2 className="mt-2 text-base font-semibold text-[#293f5e]">Case-work tools</h2>
-          <p className="mt-2 text-sm leading-6 text-[#8290a4]">{connector.caseWorkActive ? "Enabled for this firm. Member roles and the platform's client allow-list still determine which tools are available." : "Currently off. An owner/admin can review the disclosure and enable firm matter and skill tools."}</p>
+          <p className="mt-2 text-sm leading-6 text-[#8290a4]">{connector.caseWorkActive ? "Enabled for this firm. Member roles and the platform&apos;s client allow-list still determine which tools are available." : "Currently off. An owner/admin can review the disclosure and enable firm matter and skill tools."}</p>
           <Link href="/firm" className="mt-4 inline-flex text-xs font-semibold text-[#426da5]">Review firm controls →</Link>
         </article>
         <article className="rounded-2xl border border-[#e6ebf2] bg-white p-5">
