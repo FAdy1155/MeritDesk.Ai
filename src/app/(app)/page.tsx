@@ -49,13 +49,13 @@ export default async function DashboardPage() {
         <article className="rounded-2xl border border-[#e6ebf2] bg-white p-5">
           <p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#91a0b4]">02 · FIRM ACCESS</p>
           <h2 className="mt-2 text-base font-semibold text-[#293f5e]">Case-work tools</h2>
-          <p className="mt-2 text-sm leading-6 text-[#8290a4]">{connector.caseWorkActive ? "Enabled for this firm. Member roles and the platform's client allow-list still determine which tools are available." : "Currently off. An owner/admin can review the disclosure and enable firm matter and skill tools."}</p>
+          <p className="mt-2 text-sm leading-6 text-[#8290a4]">{connector.caseWorkActive ? "Enabled for this firm. Member roles and the platform&apos;s client allow-list still determine which tools are available." : "Currently off. An owner/admin can review the disclosure and enable firm matter and skill tools."}</p>
           <Link href="/firm" className="mt-4 inline-flex text-xs font-semibold text-[#426da5]">Review firm controls →</Link>
         </article>
         <article className="rounded-2xl border border-[#e6ebf2] bg-white p-5">
           <p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#91a0b4]">03 · SUBSCRIPTION</p>
           <h2 className="mt-2 text-base font-semibold text-[#293f5e]">Account status</h2>
-          <p className="mt-2 text-sm leading-6 text-[#8290a4]">{billingStatus}. The legal library and connector access follow your firm's entitlement.</p>
+          <p className="mt-2 text-sm leading-6 text-[#8290a4]">{billingStatus}. The legal library and connector access follow your firm&apos;s entitlement.</p>
           <Link href="/billing" className="mt-4 inline-flex text-xs font-semibold text-[#426da5]">Manage billing →</Link>
         </article>
       </section>
