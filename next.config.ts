@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Permit the temporary Cloudflare Quick Tunnel hostname to load dev assets
+  // and connect to HMR. This setting only applies to next dev.
+  allowedDevOrigins: ["*.trycloudflare.com"],
   // Self-contained runtime output for the Docker image (see Dockerfile) —
   // bundles only the node_modules the server actually needs.
   output: "standalone",
