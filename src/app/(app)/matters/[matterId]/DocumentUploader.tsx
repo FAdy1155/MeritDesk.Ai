@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { initiateDocumentUploadAction, requestDocumentIngestAction } from "../actions";
+import { MAX_DOCUMENT_UPLOAD_BYTES } from "@/lib/documents/upload-policy";
 
 const DOCUMENT_TYPES = [
   ["uploaded_evidence", "Uploaded evidence"],
@@ -20,6 +21,10 @@ export function DocumentUploader({ matterId }: { matterId: string }) {
   function handleUpload() {
     const file = fileInputRef.current?.files?.[0];
     if (!file) return;
+    if (file.size < 1 || file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+      setError("Choose a non-empty file that is 150 MB or smaller.");
+      return;
+    }
     setError(null);
     startTransition(async () => {
       try {

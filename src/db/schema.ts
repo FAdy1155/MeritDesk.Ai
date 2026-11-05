@@ -12,6 +12,7 @@ import {
   uniqueIndex,
   index,
   primaryKey,
+  foreignKey,
   customType,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
@@ -233,6 +234,7 @@ export const clients = pgTable("clients", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index("clients_tenant_idx").on(t.tenantId),
+  tenantIdIdIdx: uniqueIndex("clients_tenant_id_id_idx").on(t.tenantId, t.id),
 }));
 
 export const matters = pgTable("matters", {
@@ -251,6 +253,7 @@ export const matters = pgTable("matters", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index("matters_tenant_idx").on(t.tenantId),
+  tenantIdIdIdx: uniqueIndex("matters_tenant_id_id_idx").on(t.tenantId, t.id),
 }));
 
 export const matterParties = pgTable("matter_parties", {
@@ -268,6 +271,16 @@ export const matterParties = pgTable("matter_parties", {
     t.clientId,
     t.role
   ),
+  tenantMatterFk: foreignKey({
+    name: "matter_parties_tenant_matter_fk",
+    columns: [t.tenantId, t.matterId],
+    foreignColumns: [matters.tenantId, matters.id],
+  }).onDelete("cascade"),
+  tenantClientFk: foreignKey({
+    name: "matter_parties_tenant_client_fk",
+    columns: [t.tenantId, t.clientId],
+    foreignColumns: [clients.tenantId, clients.id],
+  }).onDelete("cascade"),
 }));
 
 // ---------------------------------------------------------------------------
@@ -316,6 +329,11 @@ export const documents = pgTable("documents", {
 }, (t) => ({
   tenantIdx: index("documents_tenant_idx").on(t.tenantId),
   matterIdx: index("documents_matter_idx").on(t.matterId),
+  tenantMatterFk: foreignKey({
+    name: "documents_tenant_matter_fk",
+    columns: [t.tenantId, t.matterId],
+    foreignColumns: [matters.tenantId, matters.id],
+  }).onDelete("cascade"),
 }));
 
 // ---------------------------------------------------------------------------
@@ -366,6 +384,11 @@ export const skillRuns = pgTable("skill_runs", {
 }, (t) => ({
   tenantIdx: index("skill_runs_tenant_idx").on(t.tenantId),
   matterIdx: index("skill_runs_matter_idx").on(t.matterId),
+  tenantMatterFk: foreignKey({
+    name: "skill_runs_tenant_matter_fk",
+    columns: [t.tenantId, t.matterId],
+    foreignColumns: [matters.tenantId, matters.id],
+  }).onDelete("cascade"),
 }));
 
 // ---------------------------------------------------------------------------

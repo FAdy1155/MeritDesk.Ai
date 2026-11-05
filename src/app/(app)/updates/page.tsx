@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentTenant, hasRole } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import { getSkillModule, isSupportedSkillName } from "@/services/skill-runner/skills";
 import { LEGAL_UPDATE_CHECK_CRON, LEGAL_UPDATE_CHECK_TZ } from "@/services/queue/monitoring-jobs";
 import { SOURCE_GROUP_LABELS, SOURCES, type SourceGroup } from "@/services/monitoring/sources";
@@ -63,7 +63,9 @@ export default async function LegalUpdatesPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { tenant, membership, userId } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership, userId } = current;
   const params = await searchParams;
   const viewParam = first(params.view);
   const view: LegalUpdateView = viewParam === "all" || viewParam === "screened" ? viewParam : "unreviewed";

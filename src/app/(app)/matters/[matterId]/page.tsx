@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EDITOR_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
+import { EDITOR_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import { getMatter, listMatterParties, listClients } from "@/lib/matters/service";
 import { caseTypeLabel } from "@/lib/matters/case-types";
 import { formatMatterDate, matterStatusLabel, matterVenueLabel } from "@/lib/matters/details";
@@ -43,7 +43,9 @@ export default async function MatterDetailPage({
   const { matterId } = await params;
   // A malformed id would otherwise reach a uuid column as a database error.
   if (!UUID_RE.test(matterId)) notFound();
-  const { tenant, membership, userId } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership, userId } = current;
   // read_only members see everything but change nothing; the actions behind
   // these controls check the role too.
   const canEdit = hasRole(membership, EDITOR_ROLES);

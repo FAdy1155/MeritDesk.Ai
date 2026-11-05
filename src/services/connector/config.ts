@@ -13,7 +13,7 @@ export const MCP_ENDPOINT_PATH = "/api/mcp";
  * document is also served at the root well-known path for clients that only
  * look there.
  */
-export const PROTECTED_RESOURCE_METADATA_PATH = `/.well-known/oauth-protected-resource${MCP_ENDPOINT_PATH}`;
+export const PROTECTED_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 
 /** The scope that makes Clerk's consent screen show an organization selector and put the chosen one in the org_id claim. */
 export const ORG_SCOPE = "user:org:read";

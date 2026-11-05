@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled } from "@/lib/tenant";
 import { decisionLine, fyRange, int, pct, smallFlag, snapshotStale } from "@/services/library/adapters/eoir-statistics/format";
 import { DEFINITIONS, NOT_A_PREDICTION } from "@/services/library/adapters/eoir-statistics/model";
 import type { JudgeProfile, JudgeSummary } from "@/services/library/adapters/eoir-statistics/queries";
@@ -25,7 +25,7 @@ function fyParam(value: string): number | null {
 const cell = "border-b border-black/10 px-2 py-1 align-top dark:border-white/10";
 
 export default async function EoirStatisticsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  await getCurrentTenant();
+  if (!await getCurrentTenantIfEntitled()) return null;
   const params = await searchParams;
   const q = first(params.q).slice(0, 100);
   const court = first(params.court).slice(0, 5).toUpperCase();

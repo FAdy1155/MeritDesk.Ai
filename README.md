@@ -221,15 +221,16 @@ pg_roles WHERE rolname = current_user;` (both false).
    }
    ```
 3. CORS: the browser uploads straight to S3 with a presigned PUT that
-   sends `Content-Type` and the encryption header (signed as part of the
-   URL, so S3 refuses the PUT without it). Add a CORS rule allowing exactly
+   sends `Content-Type`, the encryption header and `If-None-Match` (all signed
+   into the URL; S3 rejects a different type or size and any second use of the
+   same upload URL). Add a CORS rule allowing exactly
    that from the app's origins:
    ```json
    [
      {
        "AllowedOrigins": ["https://<web-app-name>.fly.dev", "http://localhost:3000"],
        "AllowedMethods": ["PUT"],
-       "AllowedHeaders": ["content-type", "x-amz-server-side-encryption"],
+       "AllowedHeaders": ["content-type", "if-none-match", "x-amz-server-side-encryption"],
        "MaxAgeSeconds": 3000
      }
    ]

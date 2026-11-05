@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EDITOR_ROLES, PROFILE_CONFIRM_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
+import { EDITOR_ROLES, PROFILE_CONFIRM_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import {
   getActiveProfileVersion,
   getDraftVersion,
@@ -18,7 +18,9 @@ import {
 import { ConfirmVersionForm } from "./ConfirmVersionForm";
 
 export default async function PracticeProfilePage() {
-  const { tenant, membership } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership } = current;
   // The actions check these too; this only hides controls the role cannot use.
   const canEdit = hasRole(membership, EDITOR_ROLES);
   const canConfirm = hasRole(membership, PROFILE_CONFIRM_ROLES);

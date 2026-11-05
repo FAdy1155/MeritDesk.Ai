@@ -52,7 +52,8 @@ export function documentsBucket(): string {
  * The presigner signs x-amz-server-side-encryption as a header (S3 does not
  * take it from the query string), so the browser's PUT must send exactly the
  * returned `headers`, and the bucket's CORS rule must allow them (README
- * "AWS"). Content-Type is not signed; it is sent so S3 stores the type.
+ * "AWS"). Content-Type, Content-Length and If-None-Match are signed, so the
+ * type and size match the validated upload and the URL succeeds only once.
  */
 export async function getUploadUrl(params: {
   tenantId: string;
@@ -60,6 +61,7 @@ export async function getUploadUrl(params: {
   documentId: string;
   fileName: string;
   contentType: string;
+  sizeBytes: number;
 }): Promise<{ url: string; headers: Record<string, string>; key: string; bucket: string }> {
   const bucket = documentsBucket();
   const key = `tenants/${params.tenantId}/matters/${params.matterId}/documents/${params.documentId}/${params.fileName}`;
@@ -67,11 +69,19 @@ export async function getUploadUrl(params: {
     Bucket: bucket,
     Key: key,
     ContentType: params.contentType,
+    ContentLength: params.sizeBytes,
+    IfNoneMatch: "*",
     ServerSideEncryption: SERVER_SIDE_ENCRYPTION,
   });
-  const url = await getSignedUrl(s3Client(), command, { expiresIn: 300 });
+  // Bind metadata, byte length and one-write condition into the signature.
+  // A reused URL cannot overwrite the object or create more versions.
+  const url = await getSignedUrl(s3Client(), command, {
+    expiresIn: 300,
+    signableHeaders: new Set(["content-length", "content-type", "if-none-match"]),
+  });
   const headers = {
     "Content-Type": params.contentType,
+    "If-None-Match": "*",
     "x-amz-server-side-encryption": SERVER_SIDE_ENCRYPTION,
   };
   return { url, headers, key, bucket };
@@ -156,6 +166,9 @@ export async function getDownloadUrl(params: { bucket: string; key: string; vers
     Bucket: params.bucket,
     Key: params.key,
     VersionId: params.versionId ?? undefined,
+    ResponseContentType: "application/octet-stream",
+    ResponseContentDisposition: "attachment",
+    ResponseCacheControl: "private, no-store",
   });
   return getSignedUrl(s3Client(), command, { expiresIn: DOWNLOAD_URL_EXPIRES_SECONDS });
 }

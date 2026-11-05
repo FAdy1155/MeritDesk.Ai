@@ -120,6 +120,13 @@
       "when": 1793362002208,
       "tag": "0016_members_default_role",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793896863784,
+      "tag": "0017_tenant_scoped_relationships",
+      "breakpoints": true
     }
   ]
 }

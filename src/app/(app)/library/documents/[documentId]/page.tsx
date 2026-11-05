@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled } from "@/lib/tenant";
 import { MAX_READ_CHARS } from "@/services/library/search";
 import { loadLibraryDocument } from "@/services/library/service";
 import { formatUtc, muted, OfficialLink, precedentialBadge, ToneBadge } from "../../ui";
@@ -29,7 +29,7 @@ export default async function LibraryDocumentPage({
   params: Promise<{ documentId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  await getCurrentTenant();
+  if (!await getCurrentTenantIfEntitled()) return null;
   const { documentId } = await params;
   const query = await searchParams;
   const rawOffset = Array.isArray(query.offset) ? query.offset[0] : query.offset;

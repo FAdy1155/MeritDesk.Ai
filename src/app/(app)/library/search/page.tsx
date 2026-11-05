@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isQueryCanceledError } from "@/lib/errors/safe-error";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled } from "@/lib/tenant";
 import { getLibraryGroup, isLibraryGroupCode, LIBRARY_GROUPS } from "@/services/library/groups";
 import { loadLibrarySources, searchLibraryForPage } from "@/services/library/service";
 import type { LibrarySearchResult, LibrarySourceStatusRow } from "@/services/library/search";
@@ -25,7 +25,7 @@ export default async function LibrarySearchPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  await getCurrentTenant();
+  if (!await getCurrentTenantIfEntitled()) return null;
   const params = await searchParams;
   const q = first(params.q).slice(0, 500);
   const group = isLibraryGroupCode(first(params.group)) ? first(params.group) : "";

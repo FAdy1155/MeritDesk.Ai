@@ -3,7 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { withServiceContext } from "@/db/client";
 import { tenants } from "@/db/schema";
-import { requireEntitled, type Entitlement } from "@/lib/billing/entitlement";
+import { getEntitlement, requireEntitled, type Entitlement } from "@/lib/billing/entitlement";
+import { resolveTenantPageAccess } from "@/lib/billing/page-access";
 import type { MembershipRole } from "@/lib/roles";
 import { getOrganizationMember } from "@/lib/tenants/clerk-members";
 import { resolveMembershipRole } from "@/lib/tenants/membership";
@@ -102,6 +103,21 @@ export async function getCurrentEntitledTenant(action: string) {
   const current = await getCurrentTenant();
   const entitlement: Entitlement = await requireEntitled(current.tenant.id, action);
   return { ...current, entitlement };
+}
+
+/**
+ * Page-side guard for tenant workspace data. The app layout also renders a
+ * lock screen, but page components must gate their own database reads because
+ * a parent presentation condition is not an authorization check. Returning
+ * null lets the layout render its existing lock screen without running the
+ * page's later data queries. Billing remains available through its separate
+ * route and continues to use getCurrentTenant directly.
+ */
+export async function getCurrentTenantIfEntitled(
+  resolveCurrentTenant: typeof getCurrentTenant = getCurrentTenant,
+  readCurrentEntitlement: typeof getEntitlement = getEntitlement
+) {
+  return resolveTenantPageAccess(resolveCurrentTenant, readCurrentEntitlement);
 }
 
 /**

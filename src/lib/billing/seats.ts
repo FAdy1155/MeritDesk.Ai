@@ -20,15 +20,36 @@ import { getStripe, isStripeConfigured } from "./stripe";
 
 export type SeatSyncResult = { seats: number; changed: boolean; reason: "synced" | "no_subscription" | "stripe_not_configured" | "replaced" };
 
+export type SeatSyncDependencies = {
+  runService: typeof withServiceContext;
+  stripeConfigured: () => boolean;
+  updateSubscription: (input: { subscriptionId: string; itemId: string; seats: number }) => Promise<unknown>;
+};
+
+const defaultSeatSyncDependencies: SeatSyncDependencies = {
+  runService: withServiceContext,
+  stripeConfigured: isStripeConfigured,
+  updateSubscription: ({ subscriptionId, itemId, seats }) =>
+    getStripe().subscriptions.update(subscriptionId, {
+      items: [{ id: itemId, quantity: seats }],
+      proration_behavior: "create_prorations",
+    }),
+};
+
 /**
  * Sets the subscription's quantity to the firm's member count when they
  * differ. Service context: the webhooks have no tenant session. Throws when
  * Stripe refuses; callers log and move on (the next change or the daily job
  * tries again).
  */
-export async function syncSeats(tenantId: string, actorUserId: string, now = new Date()): Promise<SeatSyncResult> {
+export async function syncSeats(
+  tenantId: string,
+  actorUserId: string,
+  now = new Date(),
+  dependencies: SeatSyncDependencies = defaultSeatSyncDependencies
+): Promise<SeatSyncResult> {
   type Plan = { done: SeatSyncResult } | { done?: undefined; seats: number; subscriptionId: string; itemId: string; storedSeats: number };
-  const plan = await withServiceContext<Plan>(async (tx) => {
+  const plan = await dependencies.runService<Plan>(async (tx) => {
     const row = await ensureTenantBilling(tx, tenantId, now);
     const seats = Math.max(1, await countMembers(tx, tenantId));
     if (!row.stripeSubscriptionId || !row.stripeSubscriptionItemId || !isLiveSubscriptionStatus(row.subscriptionStatus)) {
@@ -38,17 +59,18 @@ export async function syncSeats(tenantId: string, actorUserId: string, now = new
     return { seats, subscriptionId: row.stripeSubscriptionId, itemId: row.stripeSubscriptionItemId, storedSeats: row.seats };
   });
   if (plan.done) return plan.done;
-  if (!isStripeConfigured()) {
+  if (!dependencies.stripeConfigured()) {
     console.warn(`[billing] tenant ${tenantId} has ${plan.seats} member(s) but ${plan.storedSeats} seat(s); STRIPE_SECRET_KEY is not set, so Stripe was not updated`);
     return { seats: plan.seats, changed: false, reason: "stripe_not_configured" };
   }
 
-  await getStripe().subscriptions.update(plan.subscriptionId, {
-    items: [{ id: plan.itemId, quantity: plan.seats }],
-    proration_behavior: "create_prorations",
+  await dependencies.updateSubscription({
+    subscriptionId: plan.subscriptionId,
+    itemId: plan.itemId,
+    seats: plan.seats,
   });
 
-  return withServiceContext(async (tx) => {
+  return dependencies.runService(async (tx) => {
     const row = await lockTenantBilling(tx, tenantId);
     if (!row || row.stripeSubscriptionId !== plan.subscriptionId) {
       // The subscription changed while Stripe was being called; the webhook carries the new one's quantity.

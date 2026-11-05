@@ -50,9 +50,9 @@ export class ConnectorAuthError extends Error {
 }
 
 /**
- * Resolves a request's access token to its identity. `fresh` skips every
- * cache (the member's roles, the user's status, the token's revocation
- * state): the tools that change something or hand out a document ask for it.
+ * Resolves a request's access token to its identity. `fresh` asks authenticators
+ * that cache remote identity state to recheck it; Clerk's connector
+ * authenticator always checks token revocation and membership remotely.
  */
 export type ConnectorAuthenticator = (request: Request, options?: { fresh?: boolean }) => Promise<ConnectorIdentity>;
 
@@ -100,7 +100,7 @@ export type ConnectorToolContext = {
   /** <public origin>/billing: where the firm subscribes (payment never happens inside Claude). */
   billingUrl: string;
   deps: ConnectorDeps;
-  /** The same request authenticated again with no cache (ConnectorAuthenticator's fresh option). */
+  /** The same request authenticated again (ConnectorAuthenticator's fresh option). */
   reauthenticate: () => Promise<ConnectorIdentity>;
 };
 
@@ -117,7 +117,7 @@ export type ConnectorTool = {
   /** Beyond its group's switch: whether this caller may see and call it (role, the download setting). */
   availableTo?: (ctx: ConnectorToolContext) => boolean;
   /**
-   * Re-check the caller with Clerk, skipping the 60-second role cache, before
+   * Re-check the caller with Clerk before
    * running: for the tools that change something or hand out a document.
    */
   freshIdentity?: boolean;

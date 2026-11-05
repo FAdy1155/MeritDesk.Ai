@@ -132,7 +132,17 @@ export function createConnectorServer(ctx: ConnectorToolContext): Server {
     { name: "meritdesk-ai", title: CONNECTOR_NAME, version: SERVER_VERSION },
     { capabilities: { tools: { listChanged: false } }, instructions: INSTRUCTIONS }
   );
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: availableTools(ctx).map(toMcpTool) }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const tools = availableTools(ctx);
+    console.info("[connector] tools/list", {
+      role: ctx.identity.role,
+      caseWorkActive: ctx.settings.caseWorkActive,
+      clientAllowed: ctx.identity.clientAllowed,
+      entitlement: ctx.entitlement.state,
+      toolNames: tools.map((tool) => tool.name),
+    });
+    return { tools: tools.map(toMcpTool) };
+  });
   server.setRequestHandler(CallToolRequestSchema, async (request) => callConnectorTool(request.params.name, request.params.arguments, ctx));
   return server;
 }

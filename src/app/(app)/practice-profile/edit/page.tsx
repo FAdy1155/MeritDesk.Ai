@@ -3,12 +3,14 @@ import { startOrGetDraftAction } from "../actions";
 import { ProfileEditor } from "./ProfileEditor";
 import { readPracticeProfile } from "@/lib/practice-profile/schema";
 import { getActiveProfileVersion } from "@/lib/practice-profile/service";
-import { EDITOR_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
+import { EDITOR_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 
 export default async function EditPracticeProfilePage() {
   // startOrGetDraftAction refuses read-only members (it creates a draft);
   // say so here instead of failing the render.
-  const { tenant, membership } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership } = current;
   if (!hasRole(membership, EDITOR_ROLES)) {
     return (
       <div className="mx-auto w-full max-w-5xl">

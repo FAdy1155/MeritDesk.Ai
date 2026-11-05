@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled } from "@/lib/tenant";
 import { LIBRARY_GROUPS, LIBRARY_SECTIONS, type LibraryGroup } from "@/services/library/groups";
 import { isLibraryImportAdmin } from "@/services/library/import-service";
 import { loadLibrarySources } from "@/services/library/service";
@@ -15,7 +15,9 @@ import { formatUtc, muted, OfficialLink, StatusBadgeView, ToneBadge } from "./ui
 // whose sites refuse automated tools (/library/import).
 
 export default async function LibraryPage() {
-  const { userId } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { userId } = current;
   const canImport = isLibraryImportAdmin(userId);
   let sources: LibrarySourceStatusRow[] = [];
   let loadError: string | null = null;

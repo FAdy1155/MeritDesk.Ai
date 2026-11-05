@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { PRODUCT_NAME, formatDay } from "@/lib/billing/config";
 import { getEntitlement } from "@/lib/billing/entitlement";
 import { getConnectorSettings } from "@/lib/connector/settings";
-import { CONNECTOR_SETTINGS_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
+import { CONNECTOR_SETTINGS_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import { connectorResourceUrl, resolveConnectorOrigin } from "@/services/connector/config";
 import { CopyField } from "./CopyField";
 
@@ -11,7 +11,9 @@ const sectionClass = "rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0
 const stepsClass = "mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[#64758c] marker:font-semibold marker:text-[#5578a8]";
 
 export default async function ConnectPage() {
-  const { tenant, membership } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership } = current;
   const [entitlement, settings] = await Promise.all([getEntitlement(tenant.id), getConnectorSettings(tenant.id)]);
   const { origin } = resolveConnectorOrigin(await headers());
   const serverUrl = origin ? connectorResourceUrl(origin) : null;

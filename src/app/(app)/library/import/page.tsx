@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled } from "@/lib/tenant";
 import { isLibraryImportAdmin, loadImportPage } from "@/services/library/import-service";
 import { formatUtc, muted, OfficialLink, ToneBadge } from "../ui";
 import { ImportForm } from "./ImportForm";
@@ -12,7 +12,9 @@ import { ImportForm } from "./ImportForm";
 // shared by every firm (src/services/library/import-service.ts says why).
 
 export default async function LibraryImportPage() {
-  const { userId } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { userId } = current;
   if (!isLibraryImportAdmin(userId)) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">

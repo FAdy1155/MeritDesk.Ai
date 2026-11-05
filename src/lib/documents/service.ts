@@ -1,10 +1,11 @@
 import "server-only";
 import crypto from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { withTenantContext, type db } from "@/db/client";
+import { withTenantContext, type db, type TenantTransactionRunner } from "@/db/client";
 import { describeErrorForLog } from "@/lib/errors/safe-error";
 import { documents, documentTypeEnum, matters } from "@/db/schema";
-import { getUploadUrl, getDownloadUrl, putGeneratedDocument, DOWNLOAD_URL_EXPIRES_SECONDS } from "@/lib/s3";
+import { validateDocumentUploadMetadata } from "@/lib/documents/upload-policy";
+import { getUploadUrl, getDownloadUrl, putGeneratedDocument, pinnableVersionId, DOWNLOAD_URL_EXPIRES_SECONDS } from "@/lib/s3";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit/service";
 import { getBoss } from "@/services/queue/boss";
 import { DOCUMENT_INGEST_QUEUE, type DocumentIngestJobData } from "@/services/queue/document-ingest-job";
@@ -63,6 +64,7 @@ export async function initiateDocumentUpload(params: {
   type: (typeof documentTypeEnum.enumValues)[number];
   uploadedBy: string;
 }) {
+  const upload = validateDocumentUploadMetadata(params);
   return withTenantContext(params.tenantId, async (tx) => {
     // matterId comes from the browser. The foreign key alone would accept
     // another tenant's matter id (FK checks bypass RLS), so check ownership.
@@ -78,10 +80,10 @@ export async function initiateDocumentUpload(params: {
       .values({
         tenantId: params.tenantId,
         matterId: params.matterId,
-        type: params.type,
-        fileName: params.fileName,
-        mimeType: params.contentType,
-        sizeBytes: params.sizeBytes,
+        type: upload.type,
+        fileName: upload.fileName,
+        mimeType: upload.contentType,
+        sizeBytes: upload.sizeBytes,
         s3Key: "", // filled in below once we know the document id
         s3Bucket: "",
         uploadedBy: params.uploadedBy,
@@ -93,8 +95,9 @@ export async function initiateDocumentUpload(params: {
       tenantId: params.tenantId,
       matterId: params.matterId,
       documentId: row.id,
-      fileName: params.fileName,
-      contentType: params.contentType,
+      fileName: upload.fileName,
+      contentType: upload.contentType,
+      sizeBytes: upload.sizeBytes,
     });
 
     const [updated] = await tx
@@ -112,9 +115,9 @@ export async function initiateDocumentUpload(params: {
       // No file name: audit_logs is permanent (see recordAuditEvent).
       after: {
         matterId: params.matterId,
-        type: params.type,
-        mimeType: params.contentType,
-        sizeBytes: params.sizeBytes,
+        type: upload.type,
+        mimeType: upload.contentType,
+        sizeBytes: upload.sizeBytes,
         version: row.version,
       },
     });
@@ -274,6 +277,8 @@ const DOWNLOAD_BLOCKED_MESSAGES: Record<string, string> = {
     "Download not available yet: the file has not been scanned for malware. It can be downloaded once its scan shows clean.",
   error:
     "Download blocked: the file could not be scanned for malware (see the note on the document), so it is not released. Use Scan again, or upload a smaller or unlocked copy.",
+  unversioned:
+    "Download blocked: storage did not provide an immutable object version for this file. Enable bucket versioning and upload the file again.",
 };
 
 /**
@@ -303,10 +308,14 @@ export async function getDocumentDownloadUrl(
      * in the same transaction.
      */
     connectorCall?: { tool: string; oauthClientId: string };
+    /** Transaction runner override for isolated service-level verification. */
+    runTenant?: TenantTransactionRunner;
+    /** S3 URL signer override for isolated service-level verification. */
+    signDownload?: typeof getDownloadUrl;
   } = {}
 ) {
-  const { matterId, connectorCall } = options;
-  const result = await withTenantContext(tenantId, async (tx) => {
+  const { matterId, connectorCall, runTenant = withTenantContext, signDownload = getDownloadUrl } = options;
+  const result = await runTenant(tenantId, async (tx) => {
     const rows = await tx
       .select()
       .from(documents)
@@ -338,17 +347,23 @@ export async function getDocumentDownloadUrl(
         after: { matterId: doc.matterId, documentId: doc.id, oauthClientId: connectorCall.oauthClientId, outcome },
       });
     };
-    if (doc.malwareScanStatus !== "clean") {
+    const versionUnavailable = doc.malwareScanStatus === "clean" && !pinnableVersionId(doc.s3VersionId);
+    if (doc.malwareScanStatus !== "clean" || versionUnavailable) {
       // Returned rather than thrown, so the audit row commits.
       await recordAuditEvent(tx, {
         ...auditTarget,
         action: AUDIT_ACTIONS.documentDownloadBlocked,
-        after: { matterId: doc.matterId, version: doc.version, reason: `malware_scan_${doc.malwareScanStatus}`, ...via },
+        after: {
+          matterId: doc.matterId,
+          version: doc.version,
+          reason: versionUnavailable ? "storage_version_unavailable" : `malware_scan_${doc.malwareScanStatus}`,
+          ...via,
+        },
       });
       await recordConnectorCall("download_blocked");
-      return { blocked: true as const, status: doc.malwareScanStatus };
+      return { blocked: true as const, status: versionUnavailable ? "unversioned" : doc.malwareScanStatus };
     }
-    const url = await getDownloadUrl({ bucket: doc.s3Bucket, key: doc.s3Key, versionId: doc.s3VersionId });
+    const url = await signDownload({ bucket: doc.s3Bucket, key: doc.s3Key, versionId: doc.s3VersionId });
     await recordAuditEvent(tx, {
       ...auditTarget,
       action: AUDIT_ACTIONS.documentDownloadUrlIssued,

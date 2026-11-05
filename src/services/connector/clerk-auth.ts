@@ -1,31 +1,30 @@
 import "server-only";
-import crypto from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
 import { TenantResolutionError, resolveTenantMembership } from "@/lib/tenant";
 import { safeErrorMessage } from "@/lib/errors/safe-error";
-import { isAllowedConnectorClient } from "./config";
-import { accessTokenClaims, bearerToken, requireTokenGrants } from "./token-shape";
+import { clerkIssuer, isAllowedConnectorClient } from "./config";
+import { fetchCurrentMemberState } from "./member-state";
+import { accessTokenShape, bearerToken, organizationFromUserInfo, readVerifiedOAuthTokenStatus, requireConnectorScopes, requireRevocableConnectorToken, type VerifiedOAuthTokenStatus } from "./token-shape";
 import { ConnectorAuthError, type ConnectorAuthenticator, type ConnectorIdentity } from "./types";
 
 // Authenticates a connector request with Clerk, the app's authorization
 // server, in this order:
 //
-// 1. The bearer token must be shaped like a Clerk JWT access token
-//    (./token-shape.ts); anything else is refused with no call to Clerk.
+// 1. The bearer token must be shaped like a Clerk JWT or opaque OAuth access
+//    token (./token-shape.ts); only opaque OAuth tokens are accepted because
+//    JWT token verification cannot prove current revocation status.
 // 2. Clerk verifies it (authenticateRequest with acceptsToken "oauth_token":
 //    signature against the instance's keys, expiry, the at+jwt type).
 // 3. It must carry the connector's custom scope (CONNECTOR_REQUIRED_SCOPE,
-//    ./config.ts), so a token Clerk issued for another OAuth application of
-//    the instance does not work here, and the org_id claim of the firm the
-//    member chose at consent (the user:org:read scope).
-// 4. Clerk's Backend API is asked whether the token was revoked (cached per
-//    token for REVOCATION_CACHE_MS; see tokenRevoked for what is known).
+//    ./config.ts) and the firm selected at consent. JWT tokens carry org_id;
+//    opaque tokens resolve it from Clerk's authenticated userinfo endpoint.
+// 4. Clerk's Backend API is asked whether the opaque token was revoked on
+//    every request; this is the format Clerk can check against live status.
 // 5. The user must not be banned or locked at Clerk, and must still belong
 //    to the token's organization; the Clerk role (Admin or Member) is the
-//    current one at Clerk, never a value from the token. Both are read
-//    through Clerk's Backend API and cached for MEMBER_CACHE_MS, so a ban, a
-//    removal or a change between Admin and Member takes effect within a
-//    minute (at once for the tools that ask for `fresh`).
+//    current one at Clerk, never a value from the token. Both are fetched
+//    from Clerk on every request, so removal or a role change is not delayed
+//    by a local membership cache.
 // 6. The user and organization resolve to a tenant and membership exactly as
 //    a browser session does (resolveTenantMembership in src/lib/tenant.ts):
 //    a Clerk Admin is owner_admin; a Member has the app role stored on
@@ -36,36 +35,27 @@ import { ConnectorAuthError, type ConnectorAuthenticator, type ConnectorIdentity
 // platform's allow list (./config.ts) and reported as clientAllowed; an
 // unlisted client still gets the library tools, never the case-work ones.
 
-const MEMBER_CACHE_MS = 60_000;
-const REVOCATION_CACHE_MS = 60_000;
-const CACHE_MAX = 2_000;
+type MemberState = Awaited<ReturnType<typeof fetchCurrentMemberState>>;
 
-type OrgMembership = { orgId: string; role: string };
-type MemberState = { at: number; banned: boolean; locked: boolean; memberships: OrgMembership[] };
-const memberCache = new Map<string, MemberState>();
-const revocationCache = new Map<string, { at: number; revoked: boolean }>();
-
-function remember<V>(cache: Map<string, V>, key: string, value: V): void {
-  if (cache.size >= CACHE_MAX) cache.clear();
-  cache.set(key, value);
-}
-
-async function memberState(userId: string, fresh: boolean): Promise<MemberState> {
-  const cached = memberCache.get(userId);
-  if (!fresh && cached && Date.now() - cached.at < MEMBER_CACHE_MS) return cached;
+async function memberState(userId: string, orgId: string): Promise<MemberState> {
   const client = await clerkClient();
-  const [user, list] = await Promise.all([
-    client.users.getUser(userId),
-    client.users.getOrganizationMembershipList({ userId, limit: 100 }),
-  ]);
-  const state: MemberState = {
-    at: Date.now(),
-    banned: user.banned,
-    locked: user.locked,
-    memberships: list.data.map((m) => ({ orgId: m.organization.id, role: m.role })),
-  };
-  remember(memberCache, userId, state);
-  return state;
+  return fetchCurrentMemberState(
+    userId,
+    orgId,
+    async (id) => {
+      const user = await client.users.getUser(id);
+      return { banned: user.banned, locked: user.locked };
+    },
+    async (organizationId, memberUserId) => {
+      const page = await client.organizations.getOrganizationMembershipList({
+        organizationId,
+        userId: [memberUserId],
+        limit: 1,
+      });
+      const membership = page.data.find((item) => item.publicUserData?.userId === memberUserId);
+      return membership ? { orgId: membership.organization.id, role: membership.role } : null;
+    }
+  );
 }
 
 let lastRevocationWarningAt = 0;
@@ -74,46 +64,43 @@ let lastRevocationWarningAt = 0;
  * Whether Clerk reports the token revoked or expired, through the Backend
  * API's OAuth access token verify endpoint (POST
  * /oauth_applications/access_tokens/verify, @clerk/backend's
- * idPOAuthAccessToken.verify). Clerk's SDK verifies JWT access tokens
- * locally and never asks this for them; Clerk's documentation says JWT
- * access tokens stay valid until they expire and does not say whether the
- * endpoint reports a revoked JWT. So: a response that says revoked (or
- * expired) refuses the token; an error is logged (at most every ten
- * minutes) and the token, which Clerk's keys already verified, is accepted,
- * in which case revocation takes effect when the token expires (a day by
- * Clerk's default). Cached per token id for REVOCATION_CACHE_MS.
+ * idPOAuthAccessToken.verify). Opaque tokens require a network lookup, so a
+ * response that says revoked (or expired) refuses the token. If Clerk cannot
+ * answer, authentication fails closed with a retryable server error. This is
+ * called for every request; no local cache can extend a revoked connection's access.
  */
-async function tokenRevoked(token: string, jti: string | null, fresh: boolean): Promise<boolean> {
-  const key = jti ?? crypto.createHash("sha256").update(token).digest("hex");
-  const cached = revocationCache.get(key);
-  if (!fresh && cached && Date.now() - cached.at < REVOCATION_CACHE_MS) return cached.revoked;
-  let revoked = false;
+async function verifiedTokenStatus(
+  token: string,
+  expected: { clientId: string; subject: string }
+): Promise<VerifiedOAuthTokenStatus> {
+  let status: VerifiedOAuthTokenStatus;
   try {
     const client = await clerkClient();
-    const state = await client.idPOAuthAccessToken.verify(token);
-    revoked = state.revoked === true || state.expired === true;
+    status = await readVerifiedOAuthTokenStatus(
+      () => client.idPOAuthAccessToken.verify(token),
+      expected
+    );
   } catch (err) {
     if (Date.now() - lastRevocationWarningAt > 10 * 60_000) {
       lastRevocationWarningAt = Date.now();
       const status = (err as { status?: unknown }).status;
       console.warn(
-        `[connector] Clerk's access token verify endpoint did not answer for a JWT access token (${typeof status === "number" ? `HTTP ${status}` : safeErrorMessage(err)}); revocation then takes effect when the token expires`
+        `[connector] Clerk's access token verify endpoint did not answer; connector authentication is failing closed (${typeof status === "number" ? `HTTP ${status}` : safeErrorMessage(err)})`
       );
     }
+    // Never turn an unavailable revocation check into an authorization
+    // decision. The caller maps this operational failure to HTTP 503.
+    throw new Error("Clerk could not verify the connector access token status.");
   }
-  remember(revocationCache, key, { at: Date.now(), revoked });
-  return revoked;
+  return status;
 }
 
-export const clerkConnectorAuthenticator: ConnectorAuthenticator = async (request, options) => {
-  const fresh = options?.fresh === true;
+export const clerkConnectorAuthenticator: ConnectorAuthenticator = async (request) => {
   const token = bearerToken(request);
   if (!token) throw new ConnectorAuthError(401, "invalid_token", "");
 
-  const claims = accessTokenClaims(token);
-  if (!claims) {
-    throw new ConnectorAuthError(401, "invalid_token", "The access token is not an OAuth access token from this app's sign-in.");
-  }
+  const tokenShape = accessTokenShape(token);
+  requireRevocableConnectorToken(tokenShape);
 
   const client = await clerkClient();
   const state = await client.authenticateRequest(request, { acceptsToken: "oauth_token" });
@@ -122,20 +109,37 @@ export const clerkConnectorAuthenticator: ConnectorAuthenticator = async (reques
     throw new ConnectorAuthError(401, "invalid_token", "The access token is invalid or has expired.");
   }
   const userId = auth.userId;
-  const oauthClientId = auth.clientId || "unknown";
+  const oauthClientId = auth.clientId;
   const scopes = auth.scopes ?? [];
 
-  const orgId = requireTokenGrants(scopes, claims);
+  let orgId: string;
+  requireConnectorScopes(scopes);
+  const issuer = clerkIssuer();
+  if (!issuer) throw new Error("Clerk OAuth issuer is not configured.");
+  try {
+    orgId = await organizationFromUserInfo(token, issuer, userId);
+  } catch {
+    throw new Error("Clerk could not verify the opaque connector token's user and firm.");
+  }
 
-  let revoked: boolean;
+  let verifiedStatus: VerifiedOAuthTokenStatus;
   let member: MemberState;
   try {
-    [revoked, member] = await Promise.all([tokenRevoked(token, claims.jti, fresh), memberState(userId, fresh)]);
+    [verifiedStatus, member] = await Promise.all([
+      verifiedTokenStatus(
+        token,
+        { clientId: oauthClientId, subject: userId }
+      ),
+      memberState(userId, orgId),
+    ]);
   } catch (err) {
     // Not the caller's fault: the handler answers 503.
     throw new Error(`Clerk user and organization memberships could not be read: ${safeErrorMessage(err)}`);
   }
-  if (revoked) throw new ConnectorAuthError(401, "invalid_token", "The access token was revoked.");
+  if (verifiedStatus.revoked || verifiedStatus.expired) {
+    throw new ConnectorAuthError(401, "invalid_token", "The access token was revoked or expired.");
+  }
+  requireConnectorScopes(verifiedStatus.scopes);
   if (member.banned || member.locked) {
     throw new ConnectorAuthError(401, "invalid_token", "This account cannot sign in to the app now (it is banned or locked).");
   }

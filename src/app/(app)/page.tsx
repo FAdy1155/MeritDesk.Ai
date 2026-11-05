@@ -4,7 +4,7 @@ import Link from "next/link";
 import { formatDay } from "@/lib/billing/config";
 import { getEntitlement } from "@/lib/billing/entitlement";
 import { getConnectorSettings } from "@/lib/connector/settings";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenantIfEntitled } from "@/lib/tenant";
 
 export default async function DashboardPage() {
   const { userId } = await auth();
@@ -13,7 +13,9 @@ export default async function DashboardPage() {
   // Do not execute dashboard tenant or billing queries without an authenticated user.
   if (!userId) return null;
 
-  const { tenant } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant } = current;
   const [entitlement, connector] = await Promise.all([
     getEntitlement(tenant.id),
     getConnectorSettings(tenant.id),

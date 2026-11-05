@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { CONNECTOR_SETTINGS_ROLES, FIRM_IDENTITY_EDIT_ROLES, MEMBERS_MANAGE_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
+import { CONNECTOR_SETTINGS_ROLES, FIRM_IDENTITY_EDIT_ROLES, MEMBERS_MANAGE_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import { getFirmIdentityPageData } from "@/lib/firm-identity/service";
 import { missingFirmIdentityFields } from "@/lib/firm-identity/schema";
 import { getConnectorSettings } from "@/lib/connector/settings";
@@ -17,7 +17,9 @@ import { ConnectorSettings } from "./ConnectorSettings";
 import { MembersList } from "./MembersList";
 
 export default async function FirmPage() {
-  const { tenant, membership, userId } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership, userId } = current;
   // The actions check the role too; this only hides controls the role cannot use.
   const canEdit = hasRole(membership, FIRM_IDENTITY_EDIT_ROLES);
   const canManageConnector = hasRole(membership, CONNECTOR_SETTINGS_ROLES);

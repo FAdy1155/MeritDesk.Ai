@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EDITOR_ROLES, getCurrentTenant, hasRole } from "@/lib/tenant";
+import { EDITOR_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import { listMatters } from "@/lib/matters/service";
 import { MATTER_CASE_TYPES, caseTypeLabel } from "@/lib/matters/case-types";
 import { FEDERAL_CIRCUITS, MATTER_DETAIL_LABELS, MATTER_VENUES, formatMatterDate, matterStatusLabel, matterVenueLabel } from "@/lib/matters/details";
@@ -16,7 +16,9 @@ const inputClass = "mt-1.5 w-full rounded-xl border border-[#dce4ee] bg-white px
 const labelClass = "flex flex-col gap-1 text-xs font-medium text-[#53657d]";
 
 export default async function MattersPage() {
-  const { tenant, membership } = await getCurrentTenant();
+  const current = await getCurrentTenantIfEntitled();
+  if (!current) return null;
+  const { tenant, membership } = current;
   const canEdit = hasRole(membership, EDITOR_ROLES);
   const matterRows = await listMatters(tenant.id);
   return (
