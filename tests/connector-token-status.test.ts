@@ -7,6 +7,7 @@ import {
   requireRevocableConnectorToken,
 } from "@/services/connector/token-shape";
 import { fetchCurrentMemberState } from "@/services/connector/member-state";
+import { connectorAudienceForRequest } from "@/services/connector/config";
 
 const expectedToken = { clientId: "client_1", subject: "user_1" };
 const activeToken = {
@@ -17,6 +18,35 @@ const activeToken = {
   revoked: false,
   expired: false,
 };
+
+test("binds OAuth authentication to the exact configured MCP resource URL", () => {
+  const previousOrigin = process.env.CONNECTOR_PUBLIC_ORIGIN;
+  process.env.CONNECTOR_PUBLIC_ORIGIN = "https://mcp.meritdesk.example";
+  try {
+    const request = new Request("https://attacker.example/api/mcp", {
+      headers: { host: "attacker.example" },
+    });
+    assert.equal(
+      connectorAudienceForRequest(request, true),
+      "https://mcp.meritdesk.example/api/mcp"
+    );
+  } finally {
+    if (previousOrigin === undefined) delete process.env.CONNECTOR_PUBLIC_ORIGIN;
+    else process.env.CONNECTOR_PUBLIC_ORIGIN = previousOrigin;
+  }
+});
+
+test("refuses to derive a production OAuth audience from request headers", () => {
+  const previousOrigin = process.env.CONNECTOR_PUBLIC_ORIGIN;
+  delete process.env.CONNECTOR_PUBLIC_ORIGIN;
+  try {
+    const request = new Request("https://attacker.example/api/mcp");
+    assert.equal(connectorAudienceForRequest(request, true), null);
+  } finally {
+    if (previousOrigin === undefined) delete process.env.CONNECTOR_PUBLIC_ORIGIN;
+    else process.env.CONNECTOR_PUBLIC_ORIGIN = previousOrigin;
+  }
+});
 
 test("accepts an active OAuth token only when Clerk's record matches the authenticated identity", async () => {
   assert.deepEqual(await readVerifiedOAuthTokenStatus(async () => activeToken, expectedToken), activeToken);

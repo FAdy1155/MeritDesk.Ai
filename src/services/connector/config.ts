@@ -25,10 +25,11 @@ export const DEFAULT_CONNECTOR_SCOPE = "practice:connector";
  * The custom Clerk scope every connector token must carry
  * (CONNECTOR_REQUIRED_SCOPE, default practice:connector). Clerk issues
  * OAuth tokens for every OAuth application of the instance; requiring a
- * scope that only the connector's clients are given keeps a token issued
- * for some other application of the same instance from working here (Clerk
- * has no audience for the MCP resource). It does not tell Claude from an
- * impostor client: the client allow list below does that.
+ * scope that only the connector's clients are given marks the grant as
+ * intended for this connector. This is an additional grant check, not a
+ * substitute for resource binding: clerk-auth.ts also passes the exact MCP
+ * resource URL to Clerk's authenticateRequest audience validation. It does
+ * not tell Claude from an impostor client: the client allow list below does that.
  */
 export function connectorRequiredScope(): string {
   const value = process.env.CONNECTOR_REQUIRED_SCOPE?.trim();
@@ -124,14 +125,18 @@ export const ORIGIN_VARY = "Host, X-Forwarded-Host, X-Forwarded-Proto";
  * connector answers 500. Outside production the request's forwarded host
  * and protocol, then its URL, are used (responses then say Vary).
  */
-export function resolveConnectorOrigin(headers: Pick<Headers, "get">, requestUrl?: string): { origin: string | null; fromRequest: boolean } {
+export function resolveConnectorOrigin(
+  headers: Pick<Headers, "get">,
+  requestUrl?: string,
+  production = process.env.NODE_ENV === "production"
+): { origin: string | null; fromRequest: boolean } {
   const configured = process.env.CONNECTOR_PUBLIC_ORIGIN?.trim();
   if (configured) {
     const origin = trimOrigin(configured);
     if (origin) return { origin, fromRequest: false };
     console.error("[connector] CONNECTOR_PUBLIC_ORIGIN is not an http(s) URL");
   }
-  if (process.env.NODE_ENV === "production") {
+  if (production) {
     if (!configured) console.error("[connector] CONNECTOR_PUBLIC_ORIGIN is not set; the connector refuses to answer until it is");
     return { origin: null, fromRequest: false };
   }
@@ -155,6 +160,15 @@ export function connectorOrigin(request: Request): { origin: string | null; from
 /** The MCP server URL: what a firm enters in Claude or ChatGPT, and the protected resource's identifier. */
 export function connectorResourceUrl(origin: string): string {
   return `${origin}${MCP_ENDPOINT_PATH}`;
+}
+
+/** Exact protected-resource audience expected for this incoming MCP request. */
+export function connectorAudienceForRequest(
+  request: Request,
+  production = process.env.NODE_ENV === "production"
+): string | null {
+  const { origin } = resolveConnectorOrigin(request.headers, request.url, production);
+  return origin ? connectorResourceUrl(origin) : null;
 }
 
 /**

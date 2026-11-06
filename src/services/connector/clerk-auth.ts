@@ -2,7 +2,7 @@ import "server-only";
 import { clerkClient } from "@clerk/nextjs/server";
 import { TenantResolutionError, resolveTenantMembership } from "@/lib/tenant";
 import { safeErrorMessage } from "@/lib/errors/safe-error";
-import { clerkIssuer, isAllowedConnectorClient } from "./config";
+import { clerkIssuer, connectorAudienceForRequest, isAllowedConnectorClient } from "./config";
 import { fetchCurrentMemberState } from "./member-state";
 import { accessTokenShape, bearerToken, organizationFromUserInfo, readVerifiedOAuthTokenStatus, requireConnectorScopes, requireRevocableConnectorToken, type VerifiedOAuthTokenStatus } from "./token-shape";
 import { ConnectorAuthError, type ConnectorAuthenticator, type ConnectorIdentity } from "./types";
@@ -13,8 +13,8 @@ import { ConnectorAuthError, type ConnectorAuthenticator, type ConnectorIdentity
 // 1. The bearer token must be shaped like a Clerk JWT or opaque OAuth access
 //    token (./token-shape.ts); only opaque OAuth tokens are accepted because
 //    JWT token verification cannot prove current revocation status.
-// 2. Clerk verifies it (authenticateRequest with acceptsToken "oauth_token":
-//    signature against the instance's keys, expiry, the at+jwt type).
+// 2. Clerk verifies it with acceptsToken "oauth_token" and the exact MCP
+//    resource URL as audience, rejecting missing or cross-resource audiences.
 // 3. It must carry the connector's custom scope (CONNECTOR_REQUIRED_SCOPE,
 //    ./config.ts) and the firm selected at consent. JWT tokens carry org_id;
 //    opaque tokens resolve it from Clerk's authenticated userinfo endpoint.
@@ -103,7 +103,14 @@ export const clerkConnectorAuthenticator: ConnectorAuthenticator = async (reques
   requireRevocableConnectorToken(tokenShape);
 
   const client = await clerkClient();
-  const state = await client.authenticateRequest(request, { acceptsToken: "oauth_token" });
+  const audience = connectorAudienceForRequest(request);
+  if (!audience) {
+    throw new Error("MCP public origin is not configured; refusing to verify an unbound OAuth token.");
+  }
+  const state = await client.authenticateRequest(request, {
+    acceptsToken: "oauth_token",
+    audience,
+  });
   const auth = state.toAuth();
   if (!auth || auth.tokenType !== "oauth_token" || !auth.isAuthenticated || !auth.userId) {
     throw new ConnectorAuthError(401, "invalid_token", "The access token is invalid or has expired.");
