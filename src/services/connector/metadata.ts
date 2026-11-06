@@ -29,10 +29,9 @@ export function metadataPreflight(): Response {
 
 /**
  * RFC 9728 protected resource metadata: the endpoint's URL and Clerk as its
- * authorization server. In production the URL comes only from
+ * authorization server. The resource URL comes only from
  * CONNECTOR_PUBLIC_ORIGIN (500 without it, never the request's Host or
- * X-Forwarded-Host); in development from the request, with Vary so a cache
- * keeps one document per host.
+ * X-Forwarded-Host), in development, staging and production.
  */
 export function protectedResourceMetadataResponse(request: Request): Response {
   const issuer = clerkIssuer();

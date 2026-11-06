@@ -32,7 +32,7 @@ export const DEFAULT_CONNECTOR_SCOPE = "practice:connector";
  * not tell Claude from an impostor client: the client allow list below does that.
  */
 export function connectorRequiredScope(): string {
-  const value = process.env.CONNECTOR_REQUIRED_SCOPE?.trim();
+  const value = readEnv("CONNECTOR_REQUIRED_SCOPE")?.trim();
   return value && /^[\x21\x23-\x5b\x5d-\x7e]+$/.test(value) ? value : DEFAULT_CONNECTOR_SCOPE;
 }
 
@@ -51,11 +51,22 @@ export function connectorScopes(): string[] {
 /** Display name in the metadata and the MCP initialize response. */
 export const CONNECTOR_NAME = "MeritDesk.AI";
 
+/** Runtime env lookup (bracket access so Next.js does not inline a compile-time value). */
+function readEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return typeof value === "string" ? value : undefined;
+}
+
 function listEnv(name: string): string[] {
-  return (process.env[name] ?? "")
+  return (readEnv(name) ?? "")
     .split(/[\s,]+/)
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+/** Raw CONNECTOR_PUBLIC_ORIGIN, unread until called. */
+export function connectorPublicOriginEnv(): string | undefined {
+  return readEnv("CONNECTOR_PUBLIC_ORIGIN");
 }
 
 /**
@@ -103,58 +114,175 @@ export function isAllowedConnectorClient(clientId: string | null | undefined): b
   return ids.includes(clientId) || prefixes.some((p) => clientId.startsWith(p));
 }
 
-function trimOrigin(value: string): string | null {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    return url.origin;
-  } catch {
-    return null;
-  }
+export type ConnectorOriginParse =
+  | { ok: true; origin: string; https: boolean; loopback: boolean }
+  | { ok: false; error: string };
+
+function isLoopbackHostname(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
-/** The request headers the origin was built from in development, for a Vary header. */
+/**
+ * CONNECTOR_PUBLIC_ORIGIN: an http(s) origin with no path. HTTP is allowed
+ * only on loopback so local protocol tests can set http://127.0.0.1:3101;
+ * Claude and ChatGPT still need a public https origin. Host headers are never
+ * consulted: a request claiming :3000 cannot override a configured port.
+ */
+export function parseConnectorPublicOrigin(raw: string | undefined | null): ConnectorOriginParse {
+  const value = raw?.trim() ?? "";
+  if (!value) {
+    return {
+      ok: false,
+      error:
+        "CONNECTOR_PUBLIC_ORIGIN is not set. Set it to the origin MCP clients will call (no path), for example http://127.0.0.1:3101 locally or https://app.example.com in production. The MCP URL is that origin plus /api/mcp.",
+    };
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return {
+      ok: false,
+      error: `CONNECTOR_PUBLIC_ORIGIN is not a valid URL. Use an absolute http(s) origin with no path, for example https://app.example.com`,
+    };
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { ok: false, error: "CONNECTOR_PUBLIC_ORIGIN must use http or https." };
+  }
+  if (url.username || url.password) {
+    return { ok: false, error: "CONNECTOR_PUBLIC_ORIGIN must not include a username or password." };
+  }
+  if ((url.pathname && url.pathname !== "/") || url.search || url.hash) {
+    return {
+      ok: false,
+      error: "CONNECTOR_PUBLIC_ORIGIN must be an origin only (no path, query or fragment). Do not append /api/mcp; the app adds it.",
+    };
+  }
+  const loopback = isLoopbackHostname(url.hostname);
+  if (url.protocol === "http:" && !loopback) {
+    return {
+      ok: false,
+      error: "CONNECTOR_PUBLIC_ORIGIN must use https except on localhost or 127.0.0.1. Claude and ChatGPT require a public HTTPS origin.",
+    };
+  }
+  return { ok: true, origin: url.origin, https: url.protocol === "https:", loopback };
+}
+
+/** Clerk's issuer is its Frontend API, not the MCP origin. When set, it must be an https origin. */
+export function parseClerkOAuthIssuer(raw: string | undefined | null): { ok: true; issuer: string | null } | { ok: false; error: string } {
+  const value = raw?.trim() ?? "";
+  if (!value) return { ok: true, issuer: null };
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return { ok: false, error: "CLERK_OAUTH_ISSUER is not a valid URL. Use Clerk's Frontend API origin, for example https://clerk.example.com" };
+  }
+  if (url.protocol !== "https:") {
+    return { ok: false, error: "CLERK_OAUTH_ISSUER must be https (Clerk's Frontend API URL, no path)." };
+  }
+  if (url.username || url.password || (url.pathname && url.pathname !== "/") || url.search || url.hash) {
+    return { ok: false, error: "CLERK_OAUTH_ISSUER must be an https origin only (no path, userinfo, query or fragment)." };
+  }
+  return { ok: true, issuer: url.origin };
+}
+
+/**
+ * Logs and, when the value is present but invalid or when production is
+ * missing it, throws. Safe to call from instrumentation at process start.
+ * Does not skip Clerk token checks.
+ */
+export function assertConnectorEnvironment(production = process.env.NODE_ENV === "production"): void {
+  const rawOrigin = connectorPublicOriginEnv();
+  const origin = parseConnectorPublicOrigin(rawOrigin);
+  if (!origin.ok) {
+    const message = `[connector] ${origin.error}`;
+    if (production || Boolean(rawOrigin?.trim())) {
+      throw new Error(message);
+    }
+    console.error(message);
+  } else {
+    const mismatch = connectorListenPortMismatch(origin);
+    if (mismatch) console.error(`[connector] ${mismatch}`);
+  }
+  const issuer = parseClerkOAuthIssuer(readEnv("CLERK_OAUTH_ISSUER"));
+  if (!issuer.ok) throw new Error(`[connector] ${issuer.error}`);
+}
+
+export type ConnectorPublicSurface = {
+  origin: string;
+  mcpUrl: string;
+  metadataUrl: string;
+  billingUrl: string;
+  https: boolean;
+  loopback: boolean;
+  /** Hosted Claude/ChatGPT need HTTPS even when this process is on loopback HTTP. */
+  hostedClientsNeedHttps: boolean;
+};
+
+export function connectorPublicSurface(): ConnectorPublicSurface | { error: string } {
+  const parsed = parseConnectorPublicOrigin(connectorPublicOriginEnv());
+  if (!parsed.ok) return { error: parsed.error };
+  return {
+    origin: parsed.origin,
+    mcpUrl: connectorResourceUrl(parsed.origin),
+    metadataUrl: `${parsed.origin}${PROTECTED_RESOURCE_METADATA_PATH}`,
+    billingUrl: `${parsed.origin}/billing`,
+    https: parsed.https,
+    loopback: parsed.loopback,
+    hostedClientsNeedHttps: true,
+  };
+}
+
+/**
+ * When CONNECTOR_PUBLIC_ORIGIN is loopback HTTP but this process is listening
+ * on a different PORT (webpack-dev -p 3101 while the env still says :3000),
+ * the copied MCP URL is still the configured origin. Callers must change the
+ * env; Host is never used to rewrite it.
+ */
+export function connectorListenPortMismatch(
+  parsed: { origin: string; loopback: boolean; https: boolean },
+  listenPort = readEnv("PORT")
+): string | null {
+  if (!parsed.loopback) return null;
+  const listen = listenPort?.trim() ?? "";
+  if (!/^\d+$/.test(listen)) return null;
+  const originPort = new URL(parsed.origin).port || (parsed.https ? "443" : "80");
+  if (originPort === listen) return null;
+  return `CONNECTOR_PUBLIC_ORIGIN is ${parsed.origin} but this process PORT is ${listen}. The MCP URL remains ${parsed.origin}/api/mcp. Update CONNECTOR_PUBLIC_ORIGIN to the origin MCP clients will call (for this listen port, typically http://127.0.0.1:${listen}) and restart. The request Host header is ignored.`;
+}
+
+export function connectorEndpointHelp(surface: ConnectorPublicSurface): string {
+  if (surface.https) {
+    return "This is the HTTPS MCP endpoint. Paste it into Claude or ChatGPT. Use OAuth and leave the client ID and secret empty.";
+  }
+  return "This origin is HTTP on loopback. It is valid for local protocol tests only. Claude Desktop, claude.ai and ChatGPT require a public HTTPS CONNECTOR_PUBLIC_ORIGIN (a deployed host or HTTPS tunnel) and cannot complete OAuth against this address.";
+}
+
+/** Kept for callers that still pass a Vary header; origin is never taken from the request. */
 export const ORIGIN_VARY = "Host, X-Forwarded-Host, X-Forwarded-Proto";
 
 /**
- * The public origin of the app (https://app.example.com), and whether it was
- * built from the request's headers. CONNECTOR_PUBLIC_ORIGIN when set and
- * valid. In production it must be: the metadata's resource must equal the
- * URL the firm entered exactly, and a Host or X-Forwarded-Host header is
- * the caller's to choose, so without it the origin is null and the
- * connector answers 500. Outside production the request's forwarded host
- * and protocol, then its URL, are used (responses then say Vary).
+ * The public origin of the app. Always CONNECTOR_PUBLIC_ORIGIN after
+ * validation. Request Host / X-Forwarded-Host / PORT are ignored so a
+ * webpack-dev default of :3000 cannot override a configured 3100/3101
+ * (or a staging/production https origin).
  */
 export function resolveConnectorOrigin(
-  headers: Pick<Headers, "get">,
-  requestUrl?: string,
-  production = process.env.NODE_ENV === "production"
-): { origin: string | null; fromRequest: boolean } {
-  const configured = process.env.CONNECTOR_PUBLIC_ORIGIN?.trim();
-  if (configured) {
-    const origin = trimOrigin(configured);
-    if (origin) return { origin, fromRequest: false };
-    console.error("[connector] CONNECTOR_PUBLIC_ORIGIN is not an http(s) URL");
-  }
-  if (production) {
-    if (!configured) console.error("[connector] CONNECTOR_PUBLIC_ORIGIN is not set; the connector refuses to answer until it is");
-    return { origin: null, fromRequest: false };
-  }
-  const forwardedHost = headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const host = forwardedHost || headers.get("host");
-  const proto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const urlProtocol = requestUrl ? new URL(requestUrl).protocol.replace(":", "") : "https";
-  if (host) {
-    const scheme = proto === "http" || proto === "https" ? proto : urlProtocol;
-    const origin = trimOrigin(`${scheme}://${host}`);
-    if (origin) return { origin, fromRequest: true };
-  }
-  return { origin: requestUrl ? new URL(requestUrl).origin : "https://localhost", fromRequest: true };
+  _headers?: Pick<Headers, "get">,
+  _requestUrl?: string,
+  _production = process.env.NODE_ENV === "production"
+): { origin: string | null; fromRequest: boolean; error: string | null } {
+  const parsed = parseConnectorPublicOrigin(connectorPublicOriginEnv());
+  if (parsed.ok) return { origin: parsed.origin, fromRequest: false, error: null };
+  console.error(`[connector] ${parsed.error}`);
+  return { origin: null, fromRequest: false, error: parsed.error };
 }
 
 /** resolveConnectorOrigin for a route handler's request. */
-export function connectorOrigin(request: Request): { origin: string | null; fromRequest: boolean } {
-  return resolveConnectorOrigin(request.headers, request.url);
+export function connectorOrigin(_request?: Request): { origin: string | null; fromRequest: boolean; error: string | null } {
+  return resolveConnectorOrigin();
 }
 
 /** The MCP server URL: what a firm enters in Claude or ChatGPT, and the protected resource's identifier. */
@@ -180,9 +308,13 @@ export function connectorAudienceForRequest(
  * (pk_live_<base64 of "clerk.example.com$">), as @clerk/mcp-tools does.
  */
 export function clerkIssuer(): string | null {
-  const override = process.env.CLERK_OAUTH_ISSUER?.trim();
-  if (override) return override.replace(/\/+$/, "");
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
+  const override = parseClerkOAuthIssuer(readEnv("CLERK_OAUTH_ISSUER"));
+  if (!override.ok) {
+    console.error(`[connector] ${override.error}`);
+    return null;
+  }
+  if (override.issuer) return override.issuer;
+  const key = readEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")?.trim();
   if (!key) return null;
   const encoded = key.replace(/^pk_(test|live)_/, "");
   try {

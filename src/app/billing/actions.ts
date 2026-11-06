@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { BILLING_ROLES, ForbiddenRoleError, getCurrentTenant, requireRole } from "@/lib/tenant";
 import { BillingRequestError, type BillingErrorCode } from "@/lib/billing/errors";
@@ -18,9 +17,9 @@ import { resolveConnectorOrigin } from "@/services/connector/config";
 // logged here, never put in the URL. redirect() is called outside the try
 // block, as Next requires.
 
-/** Stripe's return links use the app's public origin (CONNECTOR_PUBLIC_ORIGIN; in development the request's host). */
+/** Stripe's return links use CONNECTOR_PUBLIC_ORIGIN only (never the request Host). */
 async function currentOrigin(): Promise<string> {
-  const { origin } = resolveConnectorOrigin(await headers());
+  const { origin } = resolveConnectorOrigin();
   if (!origin) throw new BillingRequestError("origin_missing");
   return origin;
 }

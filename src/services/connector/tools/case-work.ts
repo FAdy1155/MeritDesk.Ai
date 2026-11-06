@@ -83,7 +83,7 @@ const createClientTool = defineConnectorTool({
   inputSchema: z.object({
     full_name: z.string().trim().min(1).max(200),
     a_number: z.string().trim().max(20).optional(),
-    date_of_birth: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((v) => {
+    date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((v) => {
       const date = new Date(v + "T00:00:00.000Z");
       return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === v;
     }, "Enter a real date as YYYY-MM-DD.").optional(),

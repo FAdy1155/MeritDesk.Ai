@@ -20,6 +20,7 @@ export function ConnectorSettings({
   initialSettings,
   canManage,
   serverUrl,
+  endpointNote,
   clientAllowListConfigured,
   unrecognizedClients,
 }: {
@@ -27,6 +28,8 @@ export function ConnectorSettings({
   canManage: boolean;
   /** Null when the server has no public origin configured (CONNECTOR_PUBLIC_ORIGIN). */
   serverUrl: string | null;
+  /** Whether hosted Claude/ChatGPT can use this URL (HTTPS vs loopback HTTP). */
+  endpointNote: string;
   /** Whether the platform recognizes any Claude or ChatGPT client (without one, case work is unavailable to everyone). */
   clientAllowListConfigured: boolean;
   /** Owner/admin only (empty for other roles): clients members connected from that are not recognized. */
@@ -85,12 +88,10 @@ export function ConnectorSettings({
             <button type="button" onClick={copyUrl} className="text-xs underline">
               {copied ? "Copied" : "Copy"}
             </button>
+            <p className="w-full text-xs leading-5 text-[#7d8ba0]">{endpointNote}</p>
           </div>
         ) : (
-          <p className="text-sm text-red-600">
-            Not available: the server&apos;s public address (CONNECTOR_PUBLIC_ORIGIN) is not configured, so the connector
-            is switched off. Ask the platform&apos;s operator.
-          </p>
+          <p className="text-sm text-red-600">{endpointNote}</p>
         )}
       </div>
 

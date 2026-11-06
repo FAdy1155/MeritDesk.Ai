@@ -24,6 +24,7 @@ jobs:
       AWS_ACCESS_KEY_ID: build-placeholder
       AWS_SECRET_ACCESS_KEY: build-placeholder
       S3_DOCUMENTS_BUCKET: build-placeholder
+      CONNECTOR_PUBLIC_ORIGIN: https://app.example.com
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -38,5 +39,7 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Tests
+        run: npm test
       - name: Production build
         run: npm run build

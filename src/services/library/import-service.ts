@@ -4,6 +4,7 @@ import { withGlobalReadContext, withServiceContext } from "@/db/client";
 import { libraryImportLog } from "@/db/schema";
 import { putLibraryOriginal } from "@/lib/s3";
 import type { LibraryTransactions } from "./db";
+import { isPlatformOperator } from "@/lib/platform-admin";
 import { IMPORT_MAX_BYTES, runManualImport, type ManualImportRequest, type ManualImportResult } from "./manual-import";
 import { importableAdapters, isManualSource } from "./registry";
 import { listSources } from "./search";
@@ -24,19 +25,9 @@ import type { ManualImportPath } from "./types";
 // next to the worker's other library settings, where no firm can change it.
 // Unset or empty, nobody can import.
 
-/** The Clerk user ids in LIBRARY_IMPORT_ADMINS. */
-function importAdmins(): Set<string> {
-  return new Set(
-    (process.env.LIBRARY_IMPORT_ADMINS ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
-}
-
 /** Whether this signed-in user may import into the library (a platform operator, LIBRARY_IMPORT_ADMINS). */
 export function isLibraryImportAdmin(userId: string | null | undefined): boolean {
-  return Boolean(userId) && importAdmins().has(userId!);
+  return isPlatformOperator(userId);
 }
 
 /** Thrown when someone outside LIBRARY_IMPORT_ADMINS tries to import; the message is safe to show. */

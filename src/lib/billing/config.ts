@@ -1,3 +1,5 @@
+import { connectorPublicOriginEnv, parseConnectorPublicOrigin } from "@/services/connector/config";
+
 // What billing is made of, read from the environment on every call so a
 // restart with new settings is enough: the free month's length, the grace
 // period after a failed payment, and the app's public address for the links
@@ -55,7 +57,7 @@ export const WEBHOOK_CLAIM_RECLAIM_MINUTES = 10;
 /** stripe_webhook_events (and firm_creation_attempts) rows older than this are pruned by the daily job. */
 export const WEBHOOK_EVENT_RETENTION_DAYS = 7;
 
-function intEnv(name: string, fallback: number, min: number, max: number): number {
+export function intEnv(name: string, fallback: number, min: number, max: number): number {
   const raw = process.env[name]?.trim();
   if (!raw) return fallback;
   const value = Number(raw);
@@ -83,15 +85,8 @@ export function pastDueGraceDays(): number {
  * page instead of linking to it.
  */
 export function appOrigin(): string | null {
-  const configured = process.env.CONNECTOR_PUBLIC_ORIGIN?.trim();
-  if (!configured) return null;
-  try {
-    const url = new URL(configured);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    return url.origin;
-  } catch {
-    return null;
-  }
+  const parsed = parseConnectorPublicOrigin(connectorPublicOriginEnv());
+  return parsed.ok ? parsed.origin : null;
 }
 
 /** <origin>/billing, where a firm subscribes and manages its billing; null without a public origin. */

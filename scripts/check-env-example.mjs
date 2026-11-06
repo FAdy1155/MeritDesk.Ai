@@ -16,6 +16,8 @@ const platformProvided = new Set([
   "CI",
   "HOME",
   "HOSTNAME",
+  "NEXT_RUNTIME",
+  "NEXT_PHASE",
   "NODE_ENV",
   "NODE_OPTIONS",
   "PATH",

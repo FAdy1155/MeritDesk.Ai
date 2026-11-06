@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { PRODUCT_NAME } from "@/lib/billing/config";
-import { connectorResourceUrl, resolveConnectorOrigin } from "@/services/connector/config";
-import { CopyField } from "@/app/(app)/connect/CopyField";
+import { connectorPublicSurface } from "@/services/connector/config";
+import { ConnectorEndpoint } from "@/app/ConnectorEndpoint";
 
 export const metadata: Metadata = {
   title: `Connect Claude or ChatGPT | ${PRODUCT_NAME}`,
@@ -14,8 +13,9 @@ const cardClass = "rounded-2xl border border-[#e4eaf1] bg-white p-6 sm:p-7";
 const stepClass = "mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[#64758c] marker:font-semibold marker:text-[#5578a8]";
 
 export default async function SetupGuidePage() {
-  const { origin } = resolveConnectorOrigin(await headers());
-  const serverUrl = origin ? connectorResourceUrl(origin) : null;
+  const surface = connectorPublicSurface();
+  const configured = "error" in surface ? null : surface;
+  const configError = "error" in surface ? surface.error : null;
 
   return (
     <div className="bg-[#fbfcfe]">
@@ -29,8 +29,9 @@ export default async function SetupGuidePage() {
         <section className="rounded-2xl border border-[#dce5f0] bg-[linear-gradient(120deg,#f8fafd,#eef3fa)] p-5 sm:p-7">
           <p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#7189aa]">YOUR MERITDESK SERVER ADDRESS</p>
           <h2 className="mt-2 text-lg font-semibold text-[#263b57]">Copy this into your assistant</h2>
-          <div className="mt-4">{serverUrl ? <CopyField value={serverUrl} label="MeritDesk MCP server URL" /> : <p className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">The connector address is not configured. Please contact MeritDesk support.</p>}</div>
-          <p className="mt-3 text-xs leading-5 text-[#7d8ba0]">Use OAuth authentication. Leave client ID and client secret blank unless MeritDesk support tells you otherwise.</p>
+          <div className="mt-4">
+            <ConnectorEndpoint surface={configured} error={configError} />
+          </div>
         </section>
 
         <section className={cardClass}>
@@ -60,7 +61,7 @@ export default async function SetupGuidePage() {
           <ol className={stepClass}>
             <li>Open ChatGPT on the web and go to <strong>Plugins</strong>.</li>
             <li>Select the <strong>+</strong> button, then choose <strong>Add custom MCP server</strong>.</li>
-            <li>Name it <strong>MeritDesk.AI</strong>. Paste the server address above into the public HTTPS endpoint field.</li>
+            <li>Name it <strong>MeritDesk.AI</strong>. Paste the server address above. ChatGPT requires a <strong>public HTTPS</strong> URL; a local <code>http://127.0.0.1</code> origin will not complete OAuth.</li>
             <li>Choose OAuth authentication, review the risk warning and acknowledge it.</li>
             <li>Choose <strong>Create as a plugin</strong>. Complete the MeritDesk sign-in and review the tools ChatGPT discovers.</li>
             <li>Start a new conversation, select MeritDesk from the available plugins/apps or use <strong>@MeritDesk.AI</strong>, then ask it to perform a task. Confirm any action when ChatGPT asks.</li>

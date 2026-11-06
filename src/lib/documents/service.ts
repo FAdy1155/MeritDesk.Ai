@@ -7,6 +7,9 @@ import { documents, documentTypeEnum, matters } from "@/db/schema";
 import { validateDocumentUploadMetadata } from "@/lib/documents/upload-policy";
 import { getUploadUrl, getDownloadUrl, putGeneratedDocument, pinnableVersionId, DOWNLOAD_URL_EXPIRES_SECONDS } from "@/lib/s3";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit/service";
+import { computeEntitlement } from "@/lib/billing/entitlement";
+import { ensureTenantBilling } from "@/lib/billing/store";
+import { assertStorageQuota } from "@/lib/billing/usage";
 import { getBoss } from "@/services/queue/boss";
 import { DOCUMENT_INGEST_QUEUE, type DocumentIngestJobData } from "@/services/queue/document-ingest-job";
 
@@ -74,6 +77,9 @@ export async function initiateDocumentUpload(params: {
       .where(and(eq(matters.id, params.matterId), eq(matters.tenantId, params.tenantId)))
       .limit(1);
     if (!matter) throw new Error("Matter not found");
+
+    const billing = await ensureTenantBilling(tx, params.tenantId);
+    await assertStorageQuota(tx, params.tenantId, upload.sizeBytes, computeEntitlement(billing, new Date()));
 
     const [row] = await tx
       .insert(documents)

@@ -9,11 +9,14 @@ const isPublicRoute = createRouteMatcher([
   "/pricing",
   "/terms",
   "/privacy",
+  "/setup",
   "/sign-in(.*)",
   "/sign-up(.*)",
   // Clerk's org-sync webhook and Stripe's billing webhook, each of which
   // verifies its own signature.
   "/api/webhooks(.*)",
+  "/api/health",
+  "/api/ready",
   // The connector (docs/CONNECTORS.md): Claude and ChatGPT call it with an
   // OAuth access token, never a session, and its handler authenticates every
   // request itself (src/services/connector/http.ts), answering 401 with the

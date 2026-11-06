@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ConnectorDeps, ConnectorIdentity } from "@/services/connector/types";
+import { ConnectorAuthError, type ConnectorDeps, type ConnectorIdentity } from "@/services/connector/types";
 
 let handleConnectorRequest: typeof import("@/services/connector/http").handleConnectorRequest;
 test.before(async () => {
   process.env.DATABASE_URL = "postgresql://test:test@127.0.0.1:5432/test";
   process.env.QUEUE_DATABASE_URL = process.env.DATABASE_URL;
+  process.env.CONNECTOR_PUBLIC_ORIGIN = "https://connector.example.test";
   ({ handleConnectorRequest } = await import("@/services/connector/http"));
 });
 
@@ -104,4 +105,31 @@ test("Streamable HTTP transport initializes and discovers authorized MCP tools",
   assert.equal(called.status, 200);
   const toolResult = await called.json() as { result?: { content?: Array<{ text?: string }> } };
   assert.match(toolResult.result?.content?.[0]?.text ?? "", /00000000-0000-4000-8000-000000000111/);
+});
+
+test("MCP HTTP refuses a missing token with WWW-Authenticate and rejects GET", async () => {
+  process.env.CONNECTOR_PUBLIC_ORIGIN = "https://connector.example.test";
+  const missing = await handleConnectorRequest(
+    new Request("https://connector.example.test/api/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "fly-client-ip": "192.0.2.88" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+    }),
+    {
+      authenticate: async () => {
+        throw new ConnectorAuthError(401, "invalid_token", "Missing access token.");
+      },
+      deps,
+    }
+  );
+  assert.equal(missing.status, 401);
+  assert.match(missing.headers.get("www-authenticate") ?? "", /Bearer/);
+  assert.match(missing.headers.get("www-authenticate") ?? "", /resource_metadata="https:\/\/connector\.example\.test\/\.well-known\/oauth-protected-resource"/);
+
+  const get = await handleConnectorRequest(
+    new Request("https://connector.example.test/api/mcp", { method: "GET", headers: { authorization: "Bearer synthetic-test-token", "fly-client-ip": "192.0.2.88" } }),
+    { authenticate: async () => identity, deps }
+  );
+  assert.equal(get.status, 405);
+  assert.equal(get.headers.get("allow"), "POST");
 });

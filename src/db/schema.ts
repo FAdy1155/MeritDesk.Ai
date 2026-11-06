@@ -6,6 +6,7 @@ import {
   timestamp,
   jsonb,
   integer,
+  bigint,
   doublePrecision,
   boolean,
   date,
@@ -380,6 +381,15 @@ export const skillRuns = pgTable("skill_runs", {
   requestedBy: text("requested_by").notNull(), // Clerk user id
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  // Model usage for this run (src/lib/billing/usage.ts). Zero until the
+  // worker records an outcome; failed runs that reached the model still
+  // count, because they spent the platform's budget.
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  cacheReadInputTokens: integer("cache_read_input_tokens").notNull().default(0),
+  cacheCreationInputTokens: integer("cache_creation_input_tokens").notNull().default(0),
+  webSearchRequests: integer("web_search_requests").notNull().default(0),
+  webFetchRequests: integer("web_fetch_requests").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index("skill_runs_tenant_idx").on(t.tenantId),
@@ -526,11 +536,41 @@ export const tenantBilling = pgTable("tenant_billing", {
   pastDueSince: timestamp("past_due_since", { withTimezone: true }),
   // When the app recorded the firm as locked (trial ended without a subscription, or the subscription ended); null while not locked.
   lockedAt: timestamp("locked_at", { withTimezone: true }),
+  // Operator suspension (src/lib/billing/suspension.ts, /platform): wins over
+  // complimentary access and a live subscription. The firm's data stays;
+  // only the operator can clear it.
+  operatorSuspended: boolean("operator_suspended").notNull().default(false),
+  operatorSuspendedAt: timestamp("operator_suspended_at", { withTimezone: true }),
+  operatorSuspendedReason: text("operator_suspended_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   customerIdx: uniqueIndex("tenant_billing_customer_idx").on(t.stripeCustomerId),
   subscriptionIdx: uniqueIndex("tenant_billing_subscription_idx").on(t.stripeSubscriptionId),
+}));
+
+/**
+ * One row per tenant and UTC calendar month: the model's usage that month
+ * (src/lib/billing/usage.ts). Incremented when a run finishes (completed or
+ * failed after it reached the model). Storage is summed from documents at
+ * read time, not stored here. Tenant data under tenant_isolation (migration 0018).
+ */
+export const tenantUsageMonthly = pgTable("tenant_usage_monthly", {
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  // First day of the UTC month this row covers (2026-11-01).
+  periodStart: date("period_start").notNull(),
+  inputTokens: bigint("input_tokens", { mode: "number" }).notNull().default(0),
+  outputTokens: bigint("output_tokens", { mode: "number" }).notNull().default(0),
+  cacheReadInputTokens: bigint("cache_read_input_tokens", { mode: "number" }).notNull().default(0),
+  cacheCreationInputTokens: bigint("cache_creation_input_tokens", { mode: "number" }).notNull().default(0),
+  webSearchRequests: integer("web_search_requests").notNull().default(0),
+  webFetchRequests: integer("web_fetch_requests").notNull().default(0),
+  completedRunCount: integer("completed_run_count").notNull().default(0),
+  failedRunCount: integer("failed_run_count").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.tenantId, t.periodStart] }),
+  tenantIdx: index("tenant_usage_monthly_tenant_idx").on(t.tenantId),
 }));
 
 /**

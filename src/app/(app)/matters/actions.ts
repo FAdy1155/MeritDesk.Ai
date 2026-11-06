@@ -12,6 +12,7 @@ import {
 } from "@/lib/matters/service";
 import { matterDetailsInputSchema, matterIssuesMessage, newMatterInputSchema } from "@/lib/matters/details-schema";
 import { initiateDocumentUpload, getDocumentDownloadUrl, requestDocumentIngest } from "@/lib/documents/service";
+import { QuotaExceededError } from "@/lib/billing/usage";
 import { documentTypeEnum } from "@/db/schema";
 
 // Every action here starts with getCurrentEntitledTenant: a locked firm
@@ -100,17 +101,24 @@ export async function initiateDocumentUploadAction(params: {
   }
   const { tenant, membership, userId } = await getCurrentEntitledTenant("upload documents");
   requireRole(membership, EDITOR_ROLES, "upload documents");
-  const result = await initiateDocumentUpload({
-    tenantId: tenant.id,
-    matterId: params.matterId,
-    fileName: params.fileName,
-    contentType: params.contentType,
-    sizeBytes: params.sizeBytes,
-    type: params.type,
-    uploadedBy: userId,
-  });
-  revalidatePath(`/matters/${params.matterId}`);
-  return result;
+  try {
+    const result = await initiateDocumentUpload({
+      tenantId: tenant.id,
+      matterId: params.matterId,
+      fileName: params.fileName,
+      contentType: params.contentType,
+      sizeBytes: params.sizeBytes,
+      type: params.type,
+      uploadedBy: userId,
+    });
+    revalidatePath(`/matters/${params.matterId}`);
+    return result;
+  } catch (err) {
+    if (err instanceof QuotaExceededError || err instanceof EntitlementLockedError || err instanceof ForbiddenRoleError) {
+      throw new Error(err.message);
+    }
+    throw err;
+  }
 }
 
 /**

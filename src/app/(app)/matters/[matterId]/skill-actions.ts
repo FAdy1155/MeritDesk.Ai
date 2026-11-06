@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { EDITOR_ROLES, ForbiddenRoleError, getCurrentEntitledTenant, requireRole } from "@/lib/tenant";
 import { EntitlementLockedError } from "@/lib/billing/entitlement";
+import { QuotaExceededError } from "@/lib/billing/usage";
 import { MAX_ATTORNEY_NOTE_CHARS } from "@/lib/skill-runs/snapshot";
 import { enqueueSkillRun, retrySkillRun, SkillRunRequestError } from "@/services/skill-runner/run";
 import { getSkillModule, isSupportedSkillName } from "@/services/skill-runner/skills";
@@ -55,7 +56,7 @@ export async function triggerSkillRunAction(
     });
     return { ok: true };
   } catch (err) {
-    if (err instanceof SkillRunRequestError || err instanceof ForbiddenRoleError || err instanceof EntitlementLockedError) {
+    if (err instanceof SkillRunRequestError || err instanceof ForbiddenRoleError || err instanceof EntitlementLockedError || err instanceof QuotaExceededError) {
       return { ok: false, error: err.message };
     }
     throw err;
@@ -89,7 +90,7 @@ export async function retrySkillRunAction(skillRunId: string): Promise<ActionRes
     revalidatePath(`/matters/${matterId}`);
     return { ok: true };
   } catch (err) {
-    if (err instanceof SkillRunRequestError || err instanceof ForbiddenRoleError || err instanceof EntitlementLockedError) {
+    if (err instanceof SkillRunRequestError || err instanceof ForbiddenRoleError || err instanceof EntitlementLockedError || err instanceof QuotaExceededError) {
       return { ok: false, error: err.message };
     }
     throw err;

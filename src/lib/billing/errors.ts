@@ -13,6 +13,7 @@ export const BILLING_ERROR_CODES = [
   "portal_unavailable",
   "origin_missing",
   "checkout_failed",
+  "suspended",
 ] as const;
 
 export type BillingErrorCode = (typeof BILLING_ERROR_CODES)[number];
@@ -26,6 +27,7 @@ const TEXT: Record<BillingErrorCode, string> = {
   portal_unavailable: "Stripe's billing portal could not be opened just now. Try again; if it keeps failing, ask the platform's operator.",
   origin_missing: "The app's public address is not configured, so Stripe cannot send you back here. Ask the platform's operator.",
   checkout_failed: "Stripe Checkout could not be started just now. Try again; if it keeps failing, ask the platform's operator.",
+  suspended: "This firm has been suspended by the platform's operator. Subscribing will not restore access until the suspension is cleared.",
 };
 
 const GENERIC = "Something went wrong with billing. Try again; if it keeps failing, ask the platform's operator.";

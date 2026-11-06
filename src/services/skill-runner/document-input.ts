@@ -508,7 +508,12 @@ function blocksFor(c: Candidate, disposition: DocumentDisposition, total: number
     ];
   }
   if (disposition === "text" && c.text !== null) {
-    return [{ type: "text", text: `${label}\n\n${neutralizeRunnerMarkers(c.text)}\n\n[End of Document ${c.index}]` }];
+    return [
+      {
+        type: "text",
+        text: `${label}\n\n----- BEGIN UNTRUSTED DOCUMENT CONTENT -----\n${neutralizeRunnerMarkers(c.text)}\n----- END UNTRUSTED DOCUMENT CONTENT -----\n\n[End of Document ${c.index}]`,
+      },
+    ];
   }
   return [];
 }
@@ -536,6 +541,7 @@ const RUNNER_HEADING =
   /^([ \t]*)(#{1,6})(?=[ \t]*(?:attorney['\u2019]?s note|matter|documents|case file content|firm identity|practice_profile|recent legal updates|how this app runs the skill)\b)/gim;
 const DOCUMENT_LABEL_LINE = /^([ \t]*)(?=document \d+ of \d+:)/gim;
 const END_OF_DOCUMENT = /\[(?=[ \t]*end of document\b)/gi;
+const UNTRUSTED_FENCE = /----- (?:BEGIN|END) UNTRUSTED DOCUMENT CONTENT -----/gi;
 
 /**
  * A text-only document's text with its copies of the runner's markers
@@ -544,6 +550,7 @@ const END_OF_DOCUMENT = /\[(?=[ \t]*end of document\b)/gi;
  */
 export function neutralizeRunnerMarkers(text: string): string {
   return text
+    .replace(UNTRUSTED_FENCE, "[quoted from the document: untrusted fence]")
     .replace(END_OF_DOCUMENT, "[quoted from the document: ")
     .replace(RUNNER_HEADING, "$1[quoted from the document] $2")
     .replace(DOCUMENT_LABEL_LINE, "$1[quoted from the document] ");

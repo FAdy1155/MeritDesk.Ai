@@ -4,8 +4,11 @@ import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { withTenantContext, type TenantTransactionRunner } from "@/db/client";
 import { skillDefinitions, skillRuns, matters, documents, practiceProfileVersions } from "@/db/schema";
 import { AUDIT_ACTIONS, SYSTEM_ACTORS, recordAuditEvent } from "@/lib/audit/service";
-import { lockedReasonText, readEntitlement, type Entitlement } from "@/lib/billing/entitlement";
+import { computeEntitlement, lockedReasonText, readEntitlement, type Entitlement } from "@/lib/billing/entitlement";
+import { assertAiQuota, QuotaExceededError, recordSkillRunUsage, type ModelUsage } from "@/lib/billing/usage";
+import { ensureTenantBilling } from "@/lib/billing/store";
 import { failUnfinishedSkillRun } from "@/lib/skill-runs/service";
+import { logEvent } from "@/lib/log";
 import { describeErrorForLog, safeErrorMessage } from "@/lib/errors/safe-error";
 import type { MembershipRole } from "@/lib/roles";
 import { readRequesterRole } from "./tools/shared/signer";
@@ -58,7 +61,7 @@ type BetaToolResultBlockParam = Anthropic.Beta.BetaToolResultBlockParam;
 type BetaToolUnion = Anthropic.Beta.BetaToolUnion;
 type TurnRequest = Anthropic.Beta.Messages.MessageCreateParamsStreaming;
 
-const anthropic = new Anthropic();
+const anthropic = new Anthropic({ maxRetries: 5 });
 
 // --- Model settings (from the claude-api skill) -----------------------------
 
@@ -195,8 +198,62 @@ export async function refuseRunWhenLocked(
     },
     inTenant
   );
-  if (changed) console.warn(`processSkillRun: SkillRun ${params.skillRunId} refused: tenant ${params.tenantId} is locked (${params.entitlement.reason})`);
+  if (changed) {
+    logEvent("warn", "skill_run.refused_locked", {
+      skillRunId: params.skillRunId,
+      tenantId: params.tenantId,
+      reason: params.entitlement.reason,
+    });
+  }
   return true;
+}
+
+/**
+ * A run whose firm has already spent its monthly AI allowance is failed
+ * instead of started. Returns true when the run was refused.
+ */
+export async function refuseRunWhenOverQuota(
+  params: { skillRunId: string; tenantId: string; entitlement: Entitlement },
+  inTenant: TenantTransactionRunner = withTenantContext
+): Promise<boolean> {
+  let quotaError: QuotaExceededError | null = null;
+  try {
+    await inTenant(params.tenantId, (tx) => assertAiQuota(tx, params.tenantId, params.entitlement));
+  } catch (err) {
+    if (!(err instanceof QuotaExceededError)) throw err;
+    quotaError = err;
+  }
+  if (!quotaError) return false;
+  const changed = await failUnfinishedSkillRun(
+    {
+      tenantId: params.tenantId,
+      skillRunId: params.skillRunId,
+      fromStatuses: ["queued"],
+      errorMessage: `This run did not start: ${quotaError.message} Use Retry after the allowance resets, or ask the platform's operator.`,
+      actor: SYSTEM_ACTORS.skillRunWorker,
+      reason: "quota_exceeded",
+    },
+    inTenant
+  );
+  if (changed) {
+    logEvent("warn", "skill_run.refused_quota", {
+      skillRunId: params.skillRunId,
+      tenantId: params.tenantId,
+    });
+  }
+  return true;
+}
+
+function usageFromAudit(audit: RunAudit): ModelUsage {
+  const usage = audit.modelRun?.usage;
+  return {
+    inputTokens: usage?.inputTokens ?? 0,
+    outputTokens: usage?.outputTokens ?? 0,
+    cacheReadInputTokens: usage?.cacheReadInputTokens ?? 0,
+    cacheCreationInputTokens: usage?.cacheCreationInputTokens ?? 0,
+    webSearchRequests: usage?.webSearchRequests ?? 0,
+    webFetchRequests: usage?.webFetchRequests ?? 0,
+  };
 }
 
 /**
@@ -271,6 +328,13 @@ export async function enqueueSkillRun(params: {
       }
     }
     await assertQueueCapacity(tx, tenantId);
+    const billing = await ensureTenantBilling(tx, tenantId);
+    try {
+      await assertAiQuota(tx, tenantId, computeEntitlement(billing, new Date()));
+    } catch (err) {
+      if (err instanceof QuotaExceededError) throw new SkillRunRequestError(err.message);
+      throw err;
+    }
 
     const [skillDef] = await tx
       .select()
@@ -477,7 +541,9 @@ export async function retrySkillRun(params: {
 export async function processSkillRun(skillRunId: string, tenantId: string): Promise<void> {
   // The firm's billing state as of now, not as of the enqueue: a run queued
   // moments before the lock does not start (src/lib/billing/entitlement.ts).
-  if (await refuseRunWhenLocked({ skillRunId, tenantId, entitlement: await readEntitlement(tenantId) })) return;
+  const entitlement = await readEntitlement(tenantId);
+  if (await refuseRunWhenLocked({ skillRunId, tenantId, entitlement })) return;
+  if (await refuseRunWhenOverQuota({ skillRunId, tenantId, entitlement })) return;
 
   const run = await withTenantContext(tenantId, async (tx) => {
     const [claimed] = await tx
@@ -606,10 +672,12 @@ export async function processSkillRun(skillRunId: string, tenantId: string): Pro
           escalationFlags,
           inputSnapshot: snapshotWithAudit(),
           completedAt: new Date(),
+          ...usageFromAudit(audit),
         })
         .where(and(eq(skillRuns.id, run.id), eq(skillRuns.tenantId, tenantId), eq(skillRuns.status, "running")))
         .returning({ id: skillRuns.id });
       if (!updated) return false;
+      await recordSkillRunUsage(tx, { tenantId, usage: usageFromAudit(audit), outcome: "completed" });
       await recordAuditEvent(tx, {
         tenantId,
         actorUserId: SYSTEM_ACTORS.skillRunWorker,
@@ -647,10 +715,12 @@ export async function processSkillRun(skillRunId: string, tenantId: string): Pro
             verificationLog: audit.verificationLog,
             inputSnapshot: snapshotWithAudit(),
             completedAt: new Date(),
+            ...usageFromAudit(audit),
           })
           .where(and(eq(skillRuns.id, run.id), eq(skillRuns.tenantId, tenantId), eq(skillRuns.status, "running")))
           .returning({ id: skillRuns.id });
         if (!updated) return false;
+        await recordSkillRunUsage(tx, { tenantId, usage: usageFromAudit(audit), outcome: "failed" });
         await recordAuditEvent(tx, {
           tenantId,
           actorUserId: SYSTEM_ACTORS.skillRunWorker,

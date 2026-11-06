@@ -25,7 +25,7 @@ primary_region = "iad"
     interval = "15s"
     method = "GET"
     timeout = "5s"
-    path = "/"
+    path = "/api/health"
 
 [[vm]]
   size = "shared-cpu-1x"

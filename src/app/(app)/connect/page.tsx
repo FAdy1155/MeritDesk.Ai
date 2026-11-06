@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { PRODUCT_NAME, formatDay } from "@/lib/billing/config";
 import { getEntitlement } from "@/lib/billing/entitlement";
 import { getConnectorSettings } from "@/lib/connector/settings";
 import { CONNECTOR_SETTINGS_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
-import { connectorResourceUrl, resolveConnectorOrigin } from "@/services/connector/config";
-import { CopyField } from "./CopyField";
+import { connectorPublicSurface } from "@/services/connector/config";
+import { ConnectorEndpoint } from "@/app/ConnectorEndpoint";
 
 const sectionClass = "rounded-2xl border border-[#e4eaf1] bg-white p-5 shadow-[0_8px_30px_-25px_rgba(22,43,72,.2)] sm:p-7";
 const stepsClass = "mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[#64758c] marker:font-semibold marker:text-[#5578a8]";
@@ -15,8 +14,9 @@ export default async function ConnectPage() {
   if (!current) return null;
   const { tenant, membership } = current;
   const [entitlement, settings] = await Promise.all([getEntitlement(tenant.id), getConnectorSettings(tenant.id)]);
-  const { origin } = resolveConnectorOrigin(await headers());
-  const serverUrl = origin ? connectorResourceUrl(origin) : null;
+  const surfaceOrError = connectorPublicSurface();
+  const surface = "error" in surfaceOrError ? null : surfaceOrError;
+  const configError = "error" in surfaceOrError ? surfaceOrError.error : null;
   const canManageConnector = hasRole(membership, CONNECTOR_SETTINGS_ROLES);
 
   return (
@@ -29,8 +29,9 @@ export default async function ConnectPage() {
 
       <section className="overflow-hidden rounded-2xl border border-[#dce5f0] bg-[linear-gradient(120deg,#f8fafd,#eef3fa)] p-5 sm:p-7" aria-labelledby="connector-address">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#7189aa]">STEP 01 · START HERE</p><h2 id="connector-address" className="mt-2 text-lg font-semibold text-[#263b57]">Your firm&apos;s connector address</h2></div><span className="rounded-full border border-[#dce8df] bg-white px-3 py-1 text-[10px] font-medium text-[#477455]">Secure sign-in</span></div>
-        <div className="mt-5">{serverUrl ? <CopyField value={serverUrl} label="Connector address" /> : <p className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">Not available yet: the server&apos;s public address (CONNECTOR_PUBLIC_ORIGIN) is not configured. Ask the platform&apos;s operator.</p>}</div>
-        <p className="mt-3 text-xs leading-5 text-[#7d8ba0]">Copy this address into the custom connector setup in Claude or ChatGPT. Leave OAuth client ID and client secret fields empty; sign-in is handled by {PRODUCT_NAME}.</p>
+        <div className="mt-5">
+          <ConnectorEndpoint surface={surface} error={configError} label="Connector address" />
+        </div>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">

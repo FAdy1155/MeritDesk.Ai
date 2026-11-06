@@ -9,17 +9,19 @@ import { ensureTenantBilling } from "./store";
 // What a firm may do right now, derived from its tenant_billing row
 // (README "Trial, billing and emails"). The rules, in order:
 //
-// 0. A complimentary firm (the operator's own, npm run billing:comp) is
+// 0. Operator suspension (/platform) locks the firm even if it is
+//    complimentary or has a live subscription.
+// 1. A complimentary firm (the operator's own, npm run billing:comp) is
 //    entitled whatever else the row says.
-// 1. A live Stripe subscription wins: active, or trialing (the firm
+// 2. A live Stripe subscription wins: active, or trialing (the firm
 //    subscribed during its free month and Stripe's trial ends when the
 //    month does), with no unpaid invoice outstanding.
-// 2. A failed payment (past_due_since set, or Stripe reporting past_due)
+// 3. A failed payment (past_due_since set, or Stripe reporting past_due)
 //    keeps full access for PAST_DUE_GRACE_DAYS with a warning; after that
 //    the firm is locked (grace_ended).
-// 3. Otherwise the free month: trialing until trial_ends_at. A firm whose
+// 4. Otherwise the free month: trialing until trial_ends_at. A firm whose
 //    creator had already used a free month has none (trial_ends_at null).
-// 4. Otherwise locked: the trial ended without a subscription, there never
+// 5. Otherwise locked: the trial ended without a subscription, there never
 //    was one (no_trial), or the subscription was canceled, went unpaid, or
 //    was paused.
 //
@@ -43,7 +45,8 @@ export type EntitlementReason =
   | "subscription_canceled"
   | "subscription_unpaid"
   | "subscription_paused"
-  | "grace_ended";
+  | "grace_ended"
+  | "operator_suspended";
 
 export type Entitlement = {
   state: EntitlementState;
@@ -91,6 +94,10 @@ export function computeEntitlement(row: BillingRow, now: Date, graceDays: number
     complimentary: row.complimentary,
   };
   const status = row.subscriptionStatus;
+
+  if (row.operatorSuspended) {
+    return { ...base, state: "locked", reason: "operator_suspended" };
+  }
 
   if (row.complimentary) return { ...base, state: "active", reason: "complimentary" };
 
@@ -166,6 +173,8 @@ export function lockedReasonText(entitlement: Entitlement): string {
       return "the firm's subscription is paused";
     case "grace_ended":
       return "a payment failed and the grace period has ended";
+    case "operator_suspended":
+      return "the platform's operator has suspended this firm";
     default:
       return "the firm's subscription is not active";
   }

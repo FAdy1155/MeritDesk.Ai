@@ -101,6 +101,10 @@ export const AUDIT_ACTIONS = {
   billingUnlocked: "billing.unlocked",
   /** The operator set or cleared the firm's complimentary access (after.complimentary, after.operator) with npm run billing:comp. */
   billingComplimentarySet: "billing.complimentary_set",
+  /** The operator suspended the firm from /platform (after.reason). */
+  billingOperatorSuspended: "billing.operator_suspended",
+  /** The operator cleared a suspension from /platform. */
+  billingOperatorUnsuspended: "billing.operator_unsuspended",
   /** The firm's Clerk organization was deleted: the tenant is marked deleted (after.hadSubscription). */
   tenantDeleted: "tenant.deleted",
   /**

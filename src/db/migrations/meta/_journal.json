@@ -127,6 +127,13 @@
       "when": 1793896863784,
       "tag": "0017_tenant_scoped_relationships",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794300000000,
+      "tag": "0018_usage_quotas_admin",
+      "breakpoints": true
     }
   ]
 }

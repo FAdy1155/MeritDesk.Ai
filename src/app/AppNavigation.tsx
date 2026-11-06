@@ -13,14 +13,22 @@ const ITEMS: NavItem[] = [
   { href: "/billing", label: "Billing", icon: "$" },
 ];
 
-export function AppNavigation({ variant }: { variant: "sidebar" | "mobile"; unreviewedLegalUpdates?: number }) {
+export function AppNavigation({
+  variant,
+  isOperator = false,
+}: {
+  variant: "sidebar" | "mobile";
+  unreviewedLegalUpdates?: number;
+  isOperator?: boolean;
+}) {
   const pathname = usePathname();
   const active = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const items = isOperator ? [...ITEMS, { href: "/platform", label: "Platform", icon: "▣" }] : ITEMS;
 
   if (variant === "mobile") {
     return (
       <nav aria-label="Account navigation" className="flex gap-1 overflow-x-auto border-b border-[#e8edf4] bg-white px-3 py-2 md:hidden">
-        {ITEMS.map(item => (
+        {items.map(item => (
           <Link key={item.href} href={item.href} aria-current={active(item.href) ? "page" : undefined}
             className={"shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition " + (active(item.href) ? "bg-[#edf3fc] text-[#244d83]" : "text-[#64748b] hover:bg-[#f5f7fb] hover:text-[#233a5c]")}>
             {item.label}
@@ -41,7 +49,7 @@ export function AppNavigation({ variant }: { variant: "sidebar" | "mobile"; unre
       </Link>
       <div className="flex flex-1 flex-col gap-2">
         <p className="mb-2 px-3 text-[10px] font-bold tracking-[.16em] text-[#9aa7b9]">ACCOUNT & CONNECTION</p>
-        {ITEMS.map(item => (
+        {items.map(item => (
           <Link key={item.href} href={item.href} aria-current={active(item.href) ? "page" : undefined}
             className={"group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors " + (active(item.href) ? "bg-[#edf3fc] text-[#244d83]" : "text-[#64748b] hover:bg-[#f5f7fb] hover:text-[#233a5c]")}>
             <span aria-hidden="true" className={"flex h-6 w-6 items-center justify-center rounded-lg text-[16px] " + (active(item.href) ? "bg-white text-[#315f9d] shadow-sm" : "text-[#94a3b8] group-hover:text-[#49698f]")}>{item.icon}</span>

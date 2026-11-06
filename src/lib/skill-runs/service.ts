@@ -40,7 +40,9 @@ export type SkillRunFailureReason =
   /** In progress when its worker shut down (deploy, restart) and not finished within the grace period. */
   | "worker_shutdown"
   /** The worker went to start it and found the firm locked (free month or subscription ended) since it was queued. */
-  | "firm_locked";
+  | "firm_locked"
+  /** The firm's monthly AI token allowance was already spent. */
+  | "quota_exceeded";
 
 type UnfinishedStatus = "queued" | "running";
 

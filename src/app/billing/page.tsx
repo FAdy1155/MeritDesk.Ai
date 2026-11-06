@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PRODUCT_NAME, formatDay, formatUsd } from "@/lib/billing/config";
+import { formatBytes, formatTokenCount } from "@/lib/billing/quotas";
 import { lockedReasonText, type Entitlement } from "@/lib/billing/entitlement";
 import { billingErrorText } from "@/lib/billing/errors";
 import { getBillingOverview } from "@/lib/billing/service";
@@ -68,7 +69,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
   const params = await searchParams;
   const checkout = first(params.checkout);
   const error = billingErrorText(first(params.error));
-  const { entitlement, memberCount, monthlyCents, seatPriceCents } = overview;
+  const { entitlement, memberCount, monthlyCents, seatPriceCents, usage } = overview;
   const status = statusLines(entitlement, memberCount, monthlyCents);
 
   return (
@@ -130,6 +131,34 @@ export default async function BillingPage({ searchParams }: PageProps<"/billing"
           Stripe on the next invoice. Members are invited and removed in the organization settings (the firm menu at the
           top); their roles are set on the Firm page.
         </p>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-2xl border border-[#e4eaf1] bg-white p-5 sm:p-6" aria-labelledby="billing-usage">
+        <h2 id="billing-usage" className="font-semibold">
+          Usage this month
+        </h2>
+        <p className="text-sm leading-6 text-[#718198]">
+          AI tokens reset on the first of each month (UTC). Document storage is the total of files currently on the firm&apos;s
+          matters.
+        </p>
+        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-black/60">AI tokens (input + cache writes)</dt>
+            <dd>
+              {formatTokenCount(usage.billableInputTokens)}
+              {usage.limits.monthlyInputTokens === null
+                ? " (unlimited)"
+                : ` of ${formatTokenCount(usage.limits.monthlyInputTokens)}`}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-black/60">Document storage</dt>
+            <dd>
+              {formatBytes(usage.storageBytes)}
+              {usage.limits.storageBytes === null ? " (unlimited)" : ` of ${formatBytes(usage.limits.storageBytes)}`}
+            </dd>
+          </div>
+        </dl>
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/10" aria-labelledby="billing-actions">

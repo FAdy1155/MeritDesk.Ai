@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { CONNECTOR_SETTINGS_ROLES, FIRM_IDENTITY_EDIT_ROLES, MEMBERS_MANAGE_ROLES, getCurrentTenantIfEntitled, hasRole } from "@/lib/tenant";
 import { getFirmIdentityPageData } from "@/lib/firm-identity/service";
 import { missingFirmIdentityFields } from "@/lib/firm-identity/schema";
@@ -8,8 +7,9 @@ import { listUnrecognizedConnectorClients } from "@/lib/connector/unrecognized-c
 import { listFirmMembers } from "@/lib/tenants/members";
 import {
   connectorClientAllowListConfigured,
-  connectorResourceUrl,
-  resolveConnectorOrigin,
+  connectorEndpointHelp,
+  connectorListenPortMismatch,
+  connectorPublicSurface,
 } from "@/services/connector/config";
 import { FirmIdentityForm } from "./FirmIdentityForm";
 import { AttorneyRoster } from "./AttorneyRoster";
@@ -32,9 +32,12 @@ export default async function FirmPage() {
     listFirmMembers(tenant),
   ]);
   const missing = missingFirmIdentityFields({ firm: identity, attorneys });
-  // Null in production until CONNECTOR_PUBLIC_ORIGIN is set (the connector itself answers 500 until then).
-  const { origin: connectorPublicOrigin } = resolveConnectorOrigin(await headers());
-  const serverUrl = connectorPublicOrigin ? connectorResourceUrl(connectorPublicOrigin) : null;
+  const surfaceOrError = connectorPublicSurface();
+  const serverUrl = "error" in surfaceOrError ? null : surfaceOrError.mcpUrl;
+  const endpointNote =
+    "error" in surfaceOrError
+      ? surfaceOrError.error
+      : [connectorEndpointHelp(surfaceOrError), connectorListenPortMismatch(surfaceOrError)].filter(Boolean).join(" ");
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
@@ -76,6 +79,7 @@ export default async function FirmPage() {
         initialSettings={connectorSettings}
         canManage={canManageConnector}
         serverUrl={serverUrl}
+        endpointNote={endpointNote}
         clientAllowListConfigured={connectorClientAllowListConfigured()}
         unrecognizedClients={unrecognizedClients}
       />

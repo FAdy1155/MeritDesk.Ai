@@ -1,5 +1,7 @@
 # Deploying MeritDesk.AI
 
+Production-oriented companion: `DEPLOYMENT.md` (health checks, quotas, operator console, backups). This file is the original step-by-step runbook.
+
 Start here. This is the whole path from this code to a running app that
 Claude and ChatGPT can connect to, in order. Each step links to the detailed
 section of README.md or docs/ when you need more.

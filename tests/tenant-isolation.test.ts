@@ -121,11 +121,11 @@ test("the migrated runtime role has forced RLS on tenant records", async () => {
          'tenants', 'memberships', 'practice_profile_versions', 'clients', 'matters', 'matter_parties',
          'documents', 'skill_runs', 'audit_logs', 'firm_identities', 'firm_attorneys', 'legal_update_reviews',
          'tenant_connector_settings', 'connector_rate_buckets', 'connector_unrecognized_clients', 'tenant_billing',
-         'email_sends', 'stripe_webhook_events', 'user_trials', 'firm_creation_attempts'
+         'email_sends', 'stripe_webhook_events', 'user_trials', 'firm_creation_attempts', 'tenant_usage_monthly'
        ) ORDER BY relname`
     )
   );
-  assert.equal(result.rows.length, 20);
+  assert.equal(result.rows.length, 21);
   assert.ok(result.rows.every((row) => row.relrowsecurity && row.relforcerowsecurity));
 });
 
@@ -543,4 +543,41 @@ test("worker failure recovery is tenant-scoped and idempotent", async () => {
 
   const tenantB = await withTenant(TENANT_B, (tx) => tx.query<{ status: string }>("SELECT status FROM skill_runs WHERE id = $1", [RUN_B]));
   assert.deepEqual(tenantB.rows, [{ status: "queued" }]);
+});
+
+test("Firm A cannot read Firm B monthly usage and cannot exceed its own storage quota", async () => {
+  const { assertStorageQuota, QuotaExceededError, recordSkillRunUsage } = await import("@/lib/billing/usage");
+  const { computeEntitlement } = await import("@/lib/billing/entitlement");
+  const { ensureTenantBilling } = await import("@/lib/billing/store");
+  const now = new Date("2026-11-06T12:00:00.000Z");
+
+  await pgliteTenant(TENANT_B, (tx) =>
+    recordSkillRunUsage(tx, {
+      tenantId: TENANT_B,
+      usage: {
+        inputTokens: 9_000_000,
+        outputTokens: 1,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+        webSearchRequests: 0,
+        webFetchRequests: 0,
+      },
+      outcome: "completed",
+      now,
+    })
+  );
+
+  const fromA = await withTenant(TENANT_A, (tx) => tx.query<{ tenant_id: string }>("SELECT tenant_id FROM tenant_usage_monthly"));
+  assert.deepEqual(fromA.rows, []);
+  const fromB = await withTenant(TENANT_B, (tx) => tx.query<{ input_tokens: string }>("SELECT input_tokens::text FROM tenant_usage_monthly"));
+  assert.equal(fromB.rows.length, 1);
+
+  await pgliteTenant(TENANT_A, async (tx) => {
+    const row = await ensureTenantBilling(tx, TENANT_A, now);
+    const entitlement = computeEntitlement(row, now);
+    await assert.rejects(
+      () => assertStorageQuota(tx, TENANT_A, 3 * 1024 * 1024 * 1024, entitlement, now),
+      (err: unknown) => err instanceof QuotaExceededError && err.kind === "storage"
+    );
+  });
 });

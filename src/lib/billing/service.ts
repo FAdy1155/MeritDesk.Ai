@@ -10,6 +10,7 @@ import { BillingRequestError } from "./errors";
 import { ensurePortalConfiguration } from "./portal";
 import { countMembers, ensureTenantBilling, lockTenantBilling, readTenantBilling } from "./store";
 import { getStripe, isStripeConfigured, stripePriceId } from "./stripe";
+import { readUsageSnapshot, type UsageSnapshot } from "./usage";
 
 // The Billing page's reads and the two things an owner/admin does there
 // (README "Trial, billing and emails"): subscribe through Stripe Checkout,
@@ -36,6 +37,7 @@ export type BillingOverview = {
   canSubscribe: boolean;
   /** Subscribe charges the card at once: the firm has no free month left (or never had one). */
   chargesNow: boolean;
+  usage: UsageSnapshot;
 };
 
 export async function getBillingOverview(tenantId: string): Promise<BillingOverview> {
@@ -44,6 +46,7 @@ export async function getBillingOverview(tenantId: string): Promise<BillingOverv
     const row = await ensureTenantBilling(tx, tenantId, now);
     const memberCount = Math.max(1, await countMembers(tx, tenantId));
     const entitlement = computeEntitlement(row, now);
+    const usage = await readUsageSnapshot(tx, tenantId, entitlement, now);
     return {
       entitlement,
       memberCount,
@@ -51,8 +54,9 @@ export async function getBillingOverview(tenantId: string): Promise<BillingOverv
       monthlyCents: SEAT_PRICE_CENTS * memberCount,
       stripeConfigured: isStripeConfigured(),
       hasCustomer: row.stripeCustomerId !== null,
-      canSubscribe: !row.complimentary && !isOpenSubscriptionStatus(row.subscriptionStatus),
+      canSubscribe: !row.complimentary && !row.operatorSuspended && !isOpenSubscriptionStatus(row.subscriptionStatus),
       chargesNow: row.trialEndsAt === null || row.trialEndsAt.getTime() - now.getTime() <= CHECKOUT_TRIAL_MIN_MS,
+      usage,
     };
   });
 }
@@ -87,6 +91,7 @@ export async function startCheckout(params: {
     await ensureTenantBilling(tx, tenantId, now);
     const row = (await lockTenantBilling(tx, tenantId))!;
     if (row.complimentary) throw new BillingRequestError("complimentary");
+    if (row.operatorSuspended) throw new BillingRequestError("suspended");
     if (isOpenSubscriptionStatus(row.subscriptionStatus)) throw new BillingRequestError("already_subscribed");
     return {
       customerId: row.stripeCustomerId,

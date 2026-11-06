@@ -245,13 +245,10 @@ In the Clerk dashboard, OAuth applications
   send S256; CIMD clients always use it).
 - **Consent screen:** leave it on (Clerk forces it on with DCR and for CIMD
   clients).
-- **Access token format:** JWT (the default for new OAuth applications). The
-  connector accepts only JWT access tokens: it reads the firm from the
-  `org_id` claim and refuses a token without it, so an opaque token is
-  refused before anything is sent to Clerk. Clerk's documentation says JWT
-  access tokens stay valid until they expire (a day by default) and only
-  opaque ones can be revoked at once; see section 4 for what the connector
-  does about revocation.
+- **Access token format:** opaque (`oat_…`), not JWT. The connector refuses
+  JWTs so every call can check live revocation. Set the Clerk OAuth
+  application to opaque access tokens. The chosen firm comes from Clerk
+  userinfo (`user:org:read`), not from a JWT `org_id` claim.
 - **Organizations** must be on (they already are for the app), so Clerk
   advertises `user:org:read` and `org_id`.
 - **Redirect URIs.** With CIMD or DCR the client brings its own redirect URI
@@ -316,7 +313,7 @@ client and web machine.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `CONNECTOR_PUBLIC_ORIGIN` | none (required in production) | The app's public origin, for example `https://app.example.com` (no path). The protected resource metadata's `resource` must equal the server URL the member entered exactly, and the Firm and Connect pages show `<origin>/api/mcp`. In production, without it (or with an invalid value) the connector and its metadata answer 500 and log why: the origin is never built from the request's `Host` or `X-Forwarded-Host`, which the caller controls. In development the request's host is used, and those responses say `Vary: Host, X-Forwarded-Host, X-Forwarded-Proto`. Also the origin of the Billing page a locked firm is pointed to (`<origin>/billing`) and of the links in the app's emails |
+| `CONNECTOR_PUBLIC_ORIGIN` | none (required in production; validated in development too) | The app's public origin, for example `https://app.example.com` (no path). The protected resource metadata's `resource` must equal the server URL the member entered exactly, and the Firm and Connect pages show `<origin>/api/mcp`. Without a valid value the connector and its metadata answer 500 and log why: the origin is never built from the request's `Host`, `X-Forwarded-Host`, or listen `PORT`. Also the origin of the Billing page a locked firm is pointed to (`<origin>/billing`) and of the links in the app's emails |
 | `CONNECTOR_ALLOWED_CLIENT_IDS` | none | Recognized OAuth client ids (above) |
 | `CONNECTOR_ALLOWED_CLIENT_ID_PREFIXES` | none | Recognized CIMD client id prefixes (above) |
 | `CONNECTOR_REQUIRED_SCOPE` | `practice:connector` | The custom Clerk scope every token must carry. An invalid value (characters a scope cannot hold) falls back to the default |

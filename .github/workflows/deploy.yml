@@ -36,6 +36,22 @@ jobs:
       - name: Run TypeScript checks
         run: npm run typecheck
 
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://build:build@localhost/build
+          QUEUE_DATABASE_URL: postgresql://build:build@localhost/build
+          ANTHROPIC_API_KEY: sk-ant-build-placeholder
+          CLERK_SECRET_KEY: sk_test_build_placeholder
+          CLERK_WEBHOOK_SECRET: whsec_build_placeholder
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZXhhbXBsZS5jb20k
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: build-placeholder
+          AWS_SECRET_ACCESS_KEY: build-placeholder
+          S3_DOCUMENTS_BUCKET: build-placeholder
+          CONNECTOR_PUBLIC_ORIGIN: https://app.example.com
+          NEXT_TELEMETRY_DISABLED: "1"
+
       - name: Build production app with placeholders
         run: npm run build
         env:
@@ -49,6 +65,7 @@ jobs:
           AWS_ACCESS_KEY_ID: build-placeholder
           AWS_SECRET_ACCESS_KEY: build-placeholder
           S3_DOCUMENTS_BUCKET: build-placeholder
+          CONNECTOR_PUBLIC_ORIGIN: https://app.example.com
           NEXT_TELEMETRY_DISABLED: "1"
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
